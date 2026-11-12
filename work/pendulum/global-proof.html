@@ -1,0 +1,41 @@
+    <section id="global-proof" class="panel model" aria-labelledby="global-proof-title">
+      <div class="panel-head">
+        <div><h2 id="global-proof-title">可达性边界与证明</h2><p>有限轨道与有限推力下，存在任何控制器都无法挽救的初态</p></div>
+        <button id="proof-example" class="button compact" type="button">载入反例并判定</button>
+      </div>
+      <div class="model-body">
+        <p>在默认模型中，取小车初始位置 <strong>0 m</strong>、速度 <strong>14 m/s 向右</strong>，两杆均为 <strong>−180°</strong> 且角速度为零。即使控制器可以任意选取满足限幅的推力，小车也会在 <strong>0.4993 s</strong> 内越过轨道边界。以下证明适用于所有控制方式，包括时变和非线性控制器。</p>
+        <h3>1. 质心水平动量</h3>
+        <p>令总质量 <var>m</var><sub>Σ</sub> = <var>M</var> + <var>m</var><sub>1</sub> + <var>m</var><sub>2</sub>。以 <var>Y</var> 表示总质量乘以水平质心位置，<var>P</var> 表示系统的水平动量。<var>α</var>、<var>β</var> 与上方动力学方程中的定义相同。</p>
+        <div class="equation">
+          <span>Y = m<sub>Σ</sub>x + α sin θ₁ + β sin θ₂</span>
+          <span>P = dY/dt = m<sub>Σ</sub>ẋ + α cos θ₁·θ̇₁ + β cos θ₂·θ̇₂</span>
+          <span>dP/dt = u − bẋ</span>
+        </div>
+        <p>第三式由非线性动力学的第一行直接得到。重力为竖直力，两杆的关节作用力是内部力，在总水平动量方程中相消。忽略轨道端点碰撞时，受限输入下的运动可积分到任意有限时刻。机械能变化率为 uẋ − bẋ²，默认 b &gt; 0 时它不超过 U²/(4b)。重力势能有下界，且惯性矩阵在角度空间上一致正定，因此速度不会在有限时间内发散。</p>
+        <h3>2. 保持在轨道内的必要条件</h3>
+        <p>记轨道端点为 ±<var>X</var>，推力限幅为 ±<var>U</var>。取零外加扰动，假设在 [0, <var>t</var>] 内小车始终满足 |<var>x</var>| ≤ <var>X</var>。由 <var>u</var> ≥ −<var>U</var> 及 <var>x</var>(<var>s</var>) − <var>x</var><sub>0</sub> ≤ <var>X</var> − <var>x</var><sub>0</sub>，对任意 <var>s</var> ∈ [0, <var>t</var>] 有</p>
+        <div class="equation">
+          <span>P(s) = P₀ + ∫₀ˢ u(τ)dτ − b[x(s) − x₀] ≥ P₀ − Us − b(X − x₀)</span>
+          <span>Y(t) − Y₀ ≥ a·t − Ut²/2，a = P₀ − b(X − x₀)</span>
+          <span>Y(t) − Y₀ ≤ m<sub>Σ</sub>X + α + β − Y₀</span>
+        </div>
+        <p>第三式使用了 <var>x</var> ≤ <var>X</var> 和 |sin <var>θ</var><sub>i</sub>| ≤ 1。当 <var>a</var> &gt; 0，取 <var>t</var> = <var>a</var>/<var>U</var>，位移下界达到最大值 <var>a</var>²/(2<var>U</var>)。左侧边界可对位置与动量同时取反得到。令 <var>σ</var> = +1 表示右侧，−1 表示左侧，记 [<var>a</var>]<sub>+</sub> = max(<var>a</var>, 0)。保持在轨道内必须同时满足</p>
+        <div class="equation">
+          <span>[σP₀ − b(X − σx₀)]<sub>+</sub>² / (2U) ≤ m<sub>Σ</sub>X + α + β − σY₀，σ ∈ {−1, +1}</span>
+        </div>
+        <p>任一侧不等式被严格违反，即可判定该初态会越轨。两侧都满足时，还需另外检验从该状态能否摆起和捕获。</p>
+        <h3>3. 代入默认参数的反例</h3>
+        <div class="equation">
+          <span>m<sub>Σ</sub> = 1.30 kg，α = 0.10 kg·m，β = 0.02 kg·m</span>
+          <span>X = 2.8 m，U = 36 N，b = 0.08 N·s/m</span>
+          <span>Y₀ = 0，P₀ = 1.30 × 14 = 18.20 kg·m/s</span>
+          <span>a = 18.20 − 0.08 × 2.8 = 17.976 kg·m/s，t = 17.976/36 ≈ 0.4993 s</span>
+          <span>Y(t) ≥ 17.976²/72 = 4.488008 kg·m</span>
+          <span>|x(t)| ≤ 2.8 m ⇒ Y(t) ≤ 1.30 × 2.8 + 0.10 + 0.02 = 3.76 kg·m</span>
+        </div>
+        <p>上下界矛盾，所以在给定时刻之前必然已越轨。对任意正的有限轨道长度和有限推力上限，继续增大初始小车速度同样会得到矛盾。因此只修改有限轨长、质量或增益，也无法保证任意初态都能回到直立点。</p>
+        <h3>4. 两杆下垂时的开环反例</h3>
+        <p>令两杆均为 −180°，小车和两杆都静止，使用零开环推力。此时重力项含有的 sin θ₁、sin θ₂ 都为零，所有速度项也为零。惯性矩阵可逆，因此三个加速度均为零。由该光滑动力学的解唯一性，系统将一直停在下垂平衡点。直立点附近设计的线性反馈则需要先进入其捕获范围，有限轨道与推力下的全局保证仍受上述反例约束。</p>
+      </div>
+    </section>

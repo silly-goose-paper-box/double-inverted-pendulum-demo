@@ -1,0 +1,2520 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>二阶倒立摆仿真台</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #0c1119;
+  --panel: #121b27;
+  --field: #101721;
+  --stroke: #263447;
+  --line: #223042;
+  --text: #edf3fa;
+  --muted: #9aaac1;
+  --teal: #54dfc8;
+  --amber: #f2b86d;
+  --blue: #82aafc;
+  --pink: #f184ad;
+  --error: #ff9ca6;
+  --sans: Inter, "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.58 var(--sans); }
+button, input, select, textarea { font: inherit; }
+button, a, select, input[type=range], summary { -webkit-tap-highlight-color: transparent; }
+button, select, summary { cursor: pointer; }
+a { color: var(--teal); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+::selection { background: #397d78; color: white; }
+[hidden] { display: none !important; }
+.wrap { width: min(1340px, calc(100% - 64px)); margin-inline: auto; }
+.topbar { border-bottom: 1px solid var(--line); background: #101721; }
+.topbar-inner { display: flex; align-items: center; min-height: 62px; gap: 42px; }
+.brand { display: flex; align-items: center; gap: 11px; text-decoration: none; font: 700 13px var(--mono); letter-spacing: .11em; color: var(--text); white-space: nowrap; }
+.brand-mark { position: relative; width: 30px; height: 30px; border-radius: 8px; background: #213c3c; color: var(--teal); }
+.brand-mark::before { content: ""; width: 17px; height: 1.5px; position: absolute; left: 6px; bottom: 6px; background: #76a9a1; }
+.brand-mark i { position: absolute; width: 2px; height: 10px; bottom: 8px; left: 12px; background: var(--teal); transform: rotate(22deg); transform-origin: bottom; border-radius: 2px; }
+.brand-mark i + i { bottom: 17px; left: 16px; transform: rotate(-36deg); background: var(--amber); }
+.brand-mark i::after { position: absolute; content: ""; width: 4px; height: 4px; border-radius: 50%; top: -1px; left: -1px; background: inherit; }
+nav { display: flex; align-items: center; gap: 26px; margin-left: auto; }
+nav a { text-decoration: none; color: var(--muted); font-weight: 550; white-space: nowrap; }
+nav a:hover { color: var(--teal); }
+.heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; padding-block: 33px 27px; }
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: clamp(25px, 3.15vw, 44px); line-height: 1.24; letter-spacing: -.04em; font-weight: 800; }
+.heading p { margin-top: 8px; color: var(--muted); font-size: 14px; }
+.heading-actions, .apply-row, .chart-controls, .presets { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.heading-actions { flex-shrink: 0; }
+.button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 40px; padding: 7px 14px; border: 1px solid var(--stroke); border-radius: 8px; color: var(--text); background: #1a2534; font-weight: 650; line-height: 1.35; white-space: nowrap; transition: background .15s, border-color .15s; }
+.button:hover { border-color: #576d86; background: #25354a; }
+.button.primary { background: var(--teal); border-color: var(--teal); color: #0b2727; }
+.button.primary:hover { background: #82eddc; border-color: #82eddc; }
+.button.compact { min-height: 32px; padding: 5px 10px; font-size: 12px; }
+.button:disabled { opacity: .42; cursor: default; }
+#play { min-width: 120px; }
+#play-icon { font: 12px var(--mono); }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(330px, 400px); gap: 18px; align-items: start; }
+.main-column, .side-column { display: grid; gap: 18px; min-width: 0; }
+.panel { border: 1px solid var(--stroke); border-radius: 13px; background: var(--panel); overflow: hidden; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; }
+.panel-head h2 { font-size: 17px; font-weight: 750; letter-spacing: .015em; }
+.panel-head p { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.run-badge { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; background: #222e3e; color: #c3d0e2; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
+.run-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.run-badge[data-mode=running] { color: var(--teal); background: #193735; }
+.run-badge[data-mode=error] { color: var(--error); background: #422632; }
+.scene-area { height: clamp(310px, 32vw, 388px); border-block: 1px solid var(--line); background: #101a26; }
+canvas { display: block; width: 100%; height: 100%; }
+.readout { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+.readout > div { padding: 10px 10px 9px 16px; min-width: 0; }
+.readout > div + div { border-left: 1px solid var(--line); }
+.readout span { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.readout strong { font: 650 clamp(15px, 2vw, 22px)/1.65 var(--mono); font-variant-numeric: tabular-nums; }
+.readout small { color: var(--muted); margin-left: 4px; font: 11px var(--mono); }
+.dot, .dash { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; }
+.dot.teal { background: var(--teal); }.dot.amber { background: var(--amber); }.dot.blue { background: var(--blue); }.dot.pink { background: var(--pink); }
+.dash { border-top: 2px dashed #92a2e0; border-radius: 0; width: 14px; height: 5px; }
+.transport { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 11px 16px; }
+.transport label, .chart-controls label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.transport select, .chart-controls select { min-height: 32px; width: auto; font-family: var(--mono); padding: 3px 6px; }
+.push-controls { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.push-controls > span { color: var(--muted); font-size: 12px; }
+.settings .panel-head { border-bottom: 1px solid var(--line); }
+.settings-content { display: grid; gap: 13px; padding: 16px 18px; min-width: 0; }
+.field-stack, #custom-fields { display: grid; gap: 10px; }
+.field { display: grid; gap: 5px; min-width: 0; color: #dce6f3; }
+.field > span { font-size: 12px; font-weight: 650; display: flex; gap: 8px; justify-content: space-between; align-items: baseline; }
+.field b { color: var(--teal); font-family: var(--mono); }
+select, input:not([type=range]), textarea { min-width: 0; width: 100%; min-height: 37px; background: var(--field); color: var(--text); border: 1px solid var(--stroke); padding: 7px 9px; border-radius: 7px; }
+input:not([type=range]), textarea { font: 12px/1.55 var(--mono); }
+textarea { resize: vertical; }
+input[type=range] { width: 100%; accent-color: var(--teal); margin: 4px 0; }
+.method-description, .helper { color: var(--muted); font-size: 12px; }
+.method-description { border-left: 2px solid #3b666b; padding-left: 9px; }
+.apply-row .button { font-size: 12px; min-height: 34px; padding-inline: 10px; }
+.controller-result { color: #b1c6df; background: #101821; border: 1px solid var(--line); padding: 8px 9px; border-radius: 7px; font: 11.5px/1.6 var(--mono); overflow-wrap: anywhere; white-space: pre-wrap; }
+.controller-result[data-tone=error], .error { color: var(--error); }
+.controller-result[data-tone=pending] { color: var(--amber); }
+output:empty { display: none; }
+details > summary { font-size: 13px; font-weight: 650; color: #ccd9ec; }
+details[open] > summary { margin-bottom: 8px; }
+.custom-states, .initial-details { border-top: 1px solid var(--line); padding-top: 10px; }
+.custom-states .field-stack, .initial-details .apply-row { margin-top: 9px; }
+.initial-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.plots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
+.plots article { padding: 10px 12px 4px; background: #101821; min-width: 0; }
+.plots h3 { font-size: 13px; }
+.plots h3 span { margin-left: 4px; color: var(--muted); font: 11px var(--mono); }
+.plots .legend { display: flex; gap: 12px; min-height: 19px; color: var(--muted); font-size: 11px; }
+.plots canvas { height: 132px; }
+.wide-chart { grid-column: 1 / -1; }
+.model { margin-top: 18px; }
+.model .panel-head { border-bottom: 1px solid var(--line); }
+.model-body { display: grid; gap: 13px; padding: 18px 20px; min-width: 0; }
+#global-proof .model-body { max-width: 960px; }
+#global-proof .model-body p { margin: 0; }
+#global-proof .model-body h3 { margin: 4px 0 0; font-size: 14px; }
+.math-summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.math-summary code { color: #d7f8f3; background: #143032; padding: 5px 9px; border-radius: 6px; font: 13px/1.55 var(--mono); }
+.matrices { display: flex; gap: 18px; align-items: flex-start; overflow-x: auto; padding-bottom: 4px; }
+.matrix-block { background: var(--field); border: 1px solid var(--line); padding: 9px 12px; border-radius: 8px; flex: 0 0 auto; }
+.matrix-block h3, .model-lower h3 { font-size: 14px; margin-bottom: 6px; }
+.matrix-block h3 span { color: var(--muted); font: 11px var(--mono); margin-left: 6px; }
+.matrix-block table { color: #d3e8f9; font: 12px/1.6 var(--mono); border-inline: 1px solid #516b87; border-radius: 4px; border-spacing: 4px 0; font-variant-numeric: tabular-nums; }
+.matrix-block td { text-align: right; padding: 0 5px; min-width: 54px; }
+.matrix-block td.zero { color: #8b9fb9; }
+.model-lower { display: grid; grid-template-columns: minmax(230px, .73fr) minmax(0, 1.27fr); gap: 20px; }
+.params { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; margin: 0; }
+.params dt, .params dd { padding: 4px 0; border-bottom: 1px solid var(--line); margin: 0; font-size: 12px; }
+.params dt { color: var(--muted); }
+.params dd { color: #d8e9fa; font-family: var(--mono); text-align: right; }
+.equation { font: 12px/1.85 var(--mono); overflow-wrap: anywhere; color: #cfe3f7; background: #101721; border: 1px solid var(--line); padding: 8px 10px; border-radius: 7px; margin-bottom: 6px; }
+.equation span { display: block; }
+.reference-details { border-top: 1px solid var(--line); padding-top: 8px; }
+.reference-details ul { margin: 4px 0; padding-left: 18px; font-size: 12px; }
+footer { padding: 17px 0 25px; color: var(--muted); font-size: 12px; }
+footer span { margin-inline: 4px; }
+@media (max-width: 1040px) {
+  .wrap { width: calc(100% - 36px); }
+  .layout { grid-template-columns: minmax(0, 1fr) 330px; gap: 12px; }
+  .main-column, .side-column { gap: 12px; }
+  .readout > div { padding-left: 8px; }
+}
+@media (max-width: 830px) {
+  .layout { display: flex; flex-direction: column; }
+  .main-column, .side-column { display: contents; }
+  .layout > * > .panel { width: 100%; }
+  .layout .settings { order: 1; }
+  .layout .signals { order: 2; }
+  .model-lower { grid-template-columns: 1fr; gap: 15px; }
+  .readout > div { padding-left: 13px; }
+}
+@media (max-width: 550px) {
+  .wrap { width: calc(100% - 22px); }
+  .topbar-inner { min-height: 52px; gap: 12px; justify-content: space-between; }
+  .brand { gap: 6px; font-size: 11px; letter-spacing: .04em; }
+  .brand-mark { transform: scale(.88); }
+  nav { gap: 9px; font-size: 11px; }
+  .heading { display: grid; gap: 12px; padding-block: 21px 17px; }
+  .heading p { font-size: 12px; }
+  .heading-actions .button { min-height: 35px; }
+  .panel-head, .model-body { padding-inline: 12px; }
+  .panel-head p { font-size: 11px; }
+  .scene-area { height: 278px; }
+  .readout > div { padding: 7px 3px 6px 7px; }
+  .readout strong { font-size: 13px; }
+  .readout small { margin-left: 1px; font-size: 9px; }
+  .readout span { font-size: 10px; }
+  .transport { padding: 8px; gap: 6px; }
+  .push-controls { margin-left: 0; gap: 4px; }
+  .push-controls > span { display: none; }
+  .plots article { padding-inline: 6px; }
+  .plots .legend { gap: 4px; font-size: 10px; }
+  .chart-controls { gap: 4px; }
+  .chart-controls .button { padding-inline: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; }.button { transition: none; } }
+
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#top" aria-label="返回顶部">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
+        <span>PENDULUM LAB</span>
+      </a>
+      <nav aria-label="页面导航"><a href="#simulation">仿真台</a><a href="#signals">状态曲线</a><a href="#equations">模型方程</a></nav>
+    </div>
+  </header>
+  <main id="top" class="wrap">
+    <section class="heading" aria-labelledby="title">
+      <div>
+        <h1 id="title">二阶倒立摆仿真台</h1>
+        <p>小车驱动的双连杆倒立摆 · 非线性动力学 · 单输入六状态</p>
+      </div>
+      <div class="heading-actions">
+        <button id="reset" type="button" class="button"><span aria-hidden="true">↺</span> 重置</button>
+        <button id="play" type="button" class="button primary"><span id="play-icon" aria-hidden="true">▶</span><span id="play-label">运行仿真</span></button>
+      </div>
+    </section>
+    <div class="layout" id="simulation">
+      <div class="main-column">
+        <section class="panel" aria-labelledby="scene-title">
+          <div class="panel-head">
+            <div><h2 id="scene-title">摆杆动态</h2><p>两根摆杆的角度均相对竖直向上</p></div>
+            <span class="run-badge" id="status" data-mode="paused" role="status">待运行</span>
+          </div>
+          <div class="scene-area"><canvas id="scene" aria-label="小车、轨道和两级摆杆的实时位置" role="img"></canvas></div>
+          <div class="readout" aria-label="实时数值">
+            <div><span>时间</span><strong id="time-value">0.00</strong><small>s</small></div>
+            <div><span>小车 x</span><strong id="x-value">0.000</strong><small>m</small></div>
+            <div><span><i class="dot teal"></i> θ₁</span><strong id="t1-value">−180.00</strong><small>°</small></div>
+            <div><span><i class="dot amber"></i> θ₂</span><strong id="t2-value">−180.00</strong><small>°</small></div>
+            <div><span>驱动力 u</span><strong id="u-value">0.00</strong><small>N</small></div>
+          </div>
+          <div class="transport">
+            <button class="button compact" type="button" id="single-step">单步 10 ms</button>
+            <label>速度 <select id="speed"><option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+            <div class="push-controls" aria-label="外力扰动">
+              <span>扰动</span><button class="button compact" id="push-left" type="button" title="施加 −8 N 外力，持续 0.12 秒">← 推左</button><button class="button compact" id="push-right" type="button" title="施加 +8 N 外力，持续 0.12 秒">推右 →</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel signals" id="signals" aria-labelledby="signals-title">
+          <div class="panel-head"><div><h2 id="signals-title">实时状态曲线</h2><p>固定采样周期 10 ms · 时间单位 s</p></div><div class="chart-controls"><label>窗口 <select id="chart-window"><option>6</option><option selected>12</option><option>24</option><option>60</option></select> s</label><button class="button compact" id="export" type="button">导出 CSV</button></div></div>
+          <div class="plots">
+            <article><h3>小车位置 <span>m</span></h3><div class="legend"><span><i class="dot blue"></i> x</span><span><i class="dash"></i> 参考 r</span></div><canvas id="chart-position" role="img" aria-label="小车位置和参考位置实时曲线"></canvas></article>
+            <article><h3>摆杆角度 <span>°</span></h3><div class="legend"><span><i class="dot teal"></i> θ₁</span><span><i class="dot amber"></i> θ₂</span><span title="导出的 CSV 保留连续转角">折回 ±180°</span></div><canvas id="chart-angles" role="img" aria-label="两根摆杆折回至正负一百八十度的实时角度曲线"></canvas></article>
+            <article><h3>小车速度 <span>m/s</span></h3><div class="legend"><span><i class="dot blue"></i> ẋ</span></div><canvas id="chart-velocity" role="img" aria-label="小车速度实时曲线"></canvas></article>
+            <article><h3>摆杆角速度 <span>°/s</span></h3><div class="legend"><span><i class="dot teal"></i> θ̇₁</span><span><i class="dot amber"></i> θ̇₂</span></div><canvas id="chart-angularVelocity" role="img" aria-label="两根摆杆的角速度实时曲线"></canvas></article>
+            <article class="wide-chart"><h3>控制力 <span>N</span></h3><div class="legend"><span><i class="dot pink"></i> u</span><span>执行器限幅 ±36 N</span></div><canvas id="chart-force" role="img" aria-label="小车执行器控制力实时曲线"></canvas></article>
+          </div>
+        </section>
+      </div>
+      <aside class="side-column" aria-label="仿真配置">
+        <section class="panel settings" aria-labelledby="controller-title">
+          <div class="panel-head"><div><h2 id="controller-title">控制器设计</h2><p>全状态可测 · 控制输出为小车推力</p></div></div>
+          <div class="settings-content">
+            <label class="field"><span>控制方式</span><select id="controller"></select></label>
+            <p id="controller-description" class="method-description"></p>
+            <div id="controller-fields" class="field-stack"></div>
+            <div id="custom-fields" hidden>
+              <label class="field"><span>控制力 u（N）</span><textarea id="custom-u" rows="3" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="custom-help"></textarea></label>
+              <p id="custom-help" class="helper">变量 x, th1, th2, v, w1, w2, r, ex = x − r, t, dt。th1、th2 为折回到 ±π 的弧度值。支持四则运算、幂 ^、sin、cos、tanh、clamp(值, 下限, 上限)、if(条件, 真值, 假值)。</p>
+              <details class="custom-states"><summary>动态控制器状态 s1、s2、s3</summary>
+                <p class="helper">每个状态初始为 0，每个采样周期按 s ← s + dt·ds/dt 更新。例如填 ds1/dt = ex，再在 u 中加入 −Ki·s1，把 Ki 替换为数值即可得到位置积分项。</p>
+                <div class="field-stack"><label class="field"><span>ds1/dt</span><input id="custom-ds1" type="text" value="0" spellcheck="false"></label><label class="field"><span>ds2/dt</span><input id="custom-ds2" type="text" value="0" spellcheck="false"></label><label class="field"><span>ds3/dt</span><input id="custom-ds3" type="text" value="0" spellcheck="false"></label></div>
+              </details>
+            </div>
+            <div class="apply-row"><button id="apply-controller" class="button primary" type="button">应用控制器</button><button id="controller-defaults" class="button" type="button">恢复默认值</button></div>
+            <output id="controller-result" class="controller-result" aria-live="polite"></output>
+            <p class="helper">默认从双杆下垂起步。开启自动摆起时，先用 5 ms 步长检查摆起轨迹，再回放所选控制器接管后的 5 s。<a href="#global-proof">查看可达性证明与反例</a></p>
+          </div>
+        </section>
+        <section class="panel settings" aria-labelledby="test-title">
+          <div class="panel-head"><div><h2 id="test-title">实验设置</h2><p>摆起过程中改变参考位置，直立反馈接管后生效</p></div></div>
+          <div class="settings-content">
+            <label class="field"><span>参考位置 r <b id="reference-value">0.00 m</b></span><input id="reference" type="range" min="-1.2" max="1.2" step="0.01" value="0"></label>
+            <div class="presets" aria-label="参考位置快捷设置"><button type="button" class="button compact" data-ref="-0.25">−0.25 m</button><button type="button" class="button compact" data-ref="0">归零</button><button type="button" class="button compact" data-ref="0.25">+0.25 m</button></div>
+            <label class="helper"><input id="auto-swing" type="checkbox" checked> 自动摆起并接管（非线性仿真）</label>
+            <label class="field"><span>仿真动力学</span><select id="dynamics-type"><option value="nonlinear">非线性方程</option><option value="linear">直立点线性化</option></select></label>
+            <details class="initial-details"><summary>初始状态</summary>
+              <div id="initial-fields" class="initial-fields">
+                <label class="field"><span>x₀ (m)</span><input type="number" step="0.01" value="0" data-initial="0"></label>
+                <label class="field"><span>θ₁₀ (°)</span><input type="number" step="0.1" value="-180" data-initial="1"></label>
+                <label class="field"><span>θ₂₀ (°)</span><input type="number" step="0.1" value="-180" data-initial="2"></label>
+                <label class="field"><span>ẋ₀ (m/s)</span><input type="number" step="0.01" value="0" data-initial="3"></label>
+                <label class="field"><span>θ̇₁₀ (°/s)</span><input type="number" step="0.1" value="0" data-initial="4"></label>
+                <label class="field"><span>θ̇₂₀ (°/s)</span><input type="number" step="0.1" value="0" data-initial="5"></label>
+              </div>
+              <div class="apply-row"><button id="apply-initial" class="button compact" type="button">应用并重置</button><button id="initial-downward" class="button compact" type="button">双杆下垂</button><button id="initial-upright" class="button compact" type="button">直立小偏角</button></div>
+              <output id="initial-error" class="helper error" aria-live="polite"></output>
+            </details>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <section id="equations" class="panel model" aria-labelledby="model-title">
+      <div class="panel-head"><div><h2 id="model-title">状态空间与动力学</h2><p>直立平衡点 θ₁ = θ₂ = 0，静止时 u = 0</p></div><button id="copy-matrices" class="button compact" type="button">复制 MATLAB 矩阵</button></div>
+      <div class="model-body">
+        <div class="math-summary"><code>z = [x, θ₁, θ₂, ẋ, θ̇₁, θ̇₂]ᵀ</code><code>ż = Az + Bu， y = Cz + Du</code><code>C = I₆，D = 0₆×₁</code></div>
+        <p class="helper">x 向右为正，两杆均从竖直向上独立量角，向右倾为正。矩阵和控制器使用 m、rad、s、N。位置指令 r 对应平衡状态 z<sub>r</sub> = [r, 0, 0, 0, 0, 0]ᵀ。</p>
+        <div class="matrices"><div class="matrix-block"><h3>A <span>6 × 6</span></h3><div id="matrix-a"></div></div><div class="matrix-block"><h3>B <span>6 × 1</span></h3><div id="matrix-b"></div></div></div>
+        <p class="helper">令 H₀ = H(0)，G = diag(0, αg, βg)，F = diag(b, 0, 0)。A 的上下分块分别是 [0₃, I₃]、[H₀⁻¹G, −H₀⁻¹F]，B = [0₃×₁; H₀⁻¹(1, 0, 0)ᵀ]。</p>
+        <output id="copy-status" class="helper" aria-live="polite"></output>
+        <div class="model-lower">
+          <div><h3>固定物理参数</h3><dl id="plant-params" class="params"></dl></div>
+          <div class="nonlinear"><h3>非线性方程</h3>
+            <div class="equation">q = [x, θ₁, θ₂]ᵀ， ż = [q̇; H(q)⁻¹([u, 0, 0]ᵀ − h(q, q̇))]</div>
+            <div class="equation">
+              <span>α = m₁c₁ + m₂L₁， β = m₂c₂， γ = m₂L₁c₂</span>
+              <span>H₁₁ = M + m₁ + m₂</span>
+              <span>H₁₂ = α cos θ₁， H₁₃ = β cos θ₂</span>
+              <span>H₂₂ = J₁ + m₁c₁² + m₂L₁²， H₃₃ = J₂ + m₂c₂²</span>
+              <span>H₂₃ = γ cos(θ₁ − θ₂)， Hᵢⱼ = Hⱼᵢ</span>
+              <span>h₁ = bẋ − α sin θ₁ · θ̇₁² − β sin θ₂ · θ̇₂²</span>
+              <span>h₂ = γ sin(θ₁ − θ₂) · θ̇₂² − αg sin θ₁</span>
+              <span>h₃ = −γ sin(θ₁ − θ₂) · θ̇₁² − βg sin θ₂</span>
+            </div>
+            <p class="helper">均匀杆 cᵢ = Lᵢ/2，Jᵢ = mᵢLᵢ²/12。控制力以零阶保持施加，动力学用 5 ms 的四阶 Runge–Kutta 积分。扰动作为额外小车外力叠加。</p>
+          </div>
+        </div>
+        <details class="reference-details"><summary>参考项目</summary><p class="helper">参考了小车双倒立摆的建模与控制器分类，页面数值取自上表固定参数并独立计算。</p><ul><li><a href="https://github.com/seedatnabeel/Inverted-Pendulum-Control" target="_blank" rel="noopener">Inverted-Pendulum-Control · 极点配置、LQR 与观测器</a></li><li><a href="https://github.com/PhillippGery/DIPC_Control_Design" target="_blank" rel="noopener">DIPC Control Design · 非线性建模与 MPC</a></li></ul></details>
+      </div>
+    </section>
+        <section id="global-proof" class="panel model" aria-labelledby="global-proof-title">
+      <div class="panel-head">
+        <div><h2 id="global-proof-title">可达性边界与证明</h2><p>有限轨道与有限推力下，存在任何控制器都无法挽救的初态</p></div>
+        <button id="proof-example" class="button compact" type="button">载入反例并判定</button>
+      </div>
+      <div class="model-body">
+        <p>在默认模型中，取小车初始位置 <strong>0 m</strong>、速度 <strong>14 m/s 向右</strong>，两杆均为 <strong>−180°</strong> 且角速度为零。即使控制器可以任意选取满足限幅的推力，小车也会在 <strong>0.4993 s</strong> 内越过轨道边界。以下证明适用于所有控制方式，包括时变和非线性控制器。</p>
+        <h3>1. 质心水平动量</h3>
+        <p>令总质量 <var>m</var><sub>Σ</sub> = <var>M</var> + <var>m</var><sub>1</sub> + <var>m</var><sub>2</sub>。以 <var>Y</var> 表示总质量乘以水平质心位置，<var>P</var> 表示系统的水平动量。<var>α</var>、<var>β</var> 与上方动力学方程中的定义相同。</p>
+        <div class="equation">
+          <span>Y = m<sub>Σ</sub>x + α sin θ₁ + β sin θ₂</span>
+          <span>P = dY/dt = m<sub>Σ</sub>ẋ + α cos θ₁·θ̇₁ + β cos θ₂·θ̇₂</span>
+          <span>dP/dt = u − bẋ</span>
+        </div>
+        <p>第三式由非线性动力学的第一行直接得到。重力为竖直力，两杆的关节作用力是内部力，在总水平动量方程中相消。忽略轨道端点碰撞时，受限输入下的运动可积分到任意有限时刻。机械能变化率为 uẋ − bẋ²，默认 b &gt; 0 时它不超过 U²/(4b)。重力势能有下界，且惯性矩阵在角度空间上一致正定，因此速度不会在有限时间内发散。</p>
+        <h3>2. 保持在轨道内的必要条件</h3>
+        <p>记轨道端点为 ±<var>X</var>，推力限幅为 ±<var>U</var>。取零外加扰动，假设在 [0, <var>t</var>] 内小车始终满足 |<var>x</var>| ≤ <var>X</var>。由 <var>u</var> ≥ −<var>U</var> 及 <var>x</var>(<var>s</var>) − <var>x</var><sub>0</sub> ≤ <var>X</var> − <var>x</var><sub>0</sub>，对任意 <var>s</var> ∈ [0, <var>t</var>] 有</p>
+        <div class="equation">
+          <span>P(s) = P₀ + ∫₀ˢ u(τ)dτ − b[x(s) − x₀] ≥ P₀ − Us − b(X − x₀)</span>
+          <span>Y(t) − Y₀ ≥ a·t − Ut²/2，a = P₀ − b(X − x₀)</span>
+          <span>Y(t) − Y₀ ≤ m<sub>Σ</sub>X + α + β − Y₀</span>
+        </div>
+        <p>第三式使用了 <var>x</var> ≤ <var>X</var> 和 |sin <var>θ</var><sub>i</sub>| ≤ 1。当 <var>a</var> &gt; 0，取 <var>t</var> = <var>a</var>/<var>U</var>，位移下界达到最大值 <var>a</var>²/(2<var>U</var>)。左侧边界可对位置与动量同时取反得到。令 <var>σ</var> = +1 表示右侧，−1 表示左侧，记 [<var>a</var>]<sub>+</sub> = max(<var>a</var>, 0)。保持在轨道内必须同时满足</p>
+        <div class="equation">
+          <span>[σP₀ − b(X − σx₀)]<sub>+</sub>² / (2U) ≤ m<sub>Σ</sub>X + α + β − σY₀，σ ∈ {−1, +1}</span>
+        </div>
+        <p>任一侧不等式被严格违反，即可判定该初态会越轨。两侧都满足时，还需另外检验从该状态能否摆起和捕获。</p>
+        <h3>3. 代入默认参数的反例</h3>
+        <div class="equation">
+          <span>m<sub>Σ</sub> = 1.30 kg，α = 0.10 kg·m，β = 0.02 kg·m</span>
+          <span>X = 2.8 m，U = 36 N，b = 0.08 N·s/m</span>
+          <span>Y₀ = 0，P₀ = 1.30 × 14 = 18.20 kg·m/s</span>
+          <span>a = 18.20 − 0.08 × 2.8 = 17.976 kg·m/s，t = 17.976/36 ≈ 0.4993 s</span>
+          <span>Y(t) ≥ 17.976²/72 = 4.488008 kg·m</span>
+          <span>|x(t)| ≤ 2.8 m ⇒ Y(t) ≤ 1.30 × 2.8 + 0.10 + 0.02 = 3.76 kg·m</span>
+        </div>
+        <p>上下界矛盾，所以在给定时刻之前必然已越轨。对任意正的有限轨道长度和有限推力上限，继续增大初始小车速度同样会得到矛盾。因此只修改有限轨长、质量或增益，也无法保证任意初态都能回到直立点。</p>
+        <h3>4. 两杆下垂时的开环反例</h3>
+        <p>令两杆均为 −180°，小车和两杆都静止，使用零开环推力。此时重力项含有的 sin θ₁、sin θ₂ 都为零，所有速度项也为零。惯性矩阵可逆，因此三个加速度均为零。由该光滑动力学的解唯一性，系统将一直停在下垂平衡点。直立点附近设计的线性反馈则需要先进入其捕获范围，有限轨道与推力下的全局保证仍受上述反例约束。</p>
+      </div>
+    </section>
+
+    <footer>小车轨道范围 ±2.8 m <span>·</span> 到达边界时停止仿真 <span>·</span> 开启自动摆起后，所选控制器在直立附近接管</footer>
+  </main>
+  <script>
+const Plant = (() => {
+  const params = Object.freeze({
+    M: 1.0,
+    m1: 0.20,
+    m2: 0.10,
+    L1: 0.50,
+    L2: 0.40,
+    g: 9.81,
+    b: 0.08,
+    forceLimit: 36,
+    railLimit: 2.8,
+  });
+
+  const { M, m1, m2, L1, L2, g, b } = params;
+  const totalMass = M + m1 + m2;
+  const p1 = m1 * L1 / 2 + m2 * L1;
+  const p2 = m2 * L2 / 2;
+  const j1 = m1 * L1 ** 2 / 3 + m2 * L1 ** 2;
+  const j2 = m2 * L2 ** 2 / 3;
+  const coupling = m2 * L1 * L2 / 2;
+  const constants = Object.freeze({ totalMass, p1, p2, j1, j2, coupling });
+  const initialState = Object.freeze([0, 0.05, -0.035, 0, 0, 0]);
+
+  function mass(q) {
+    const [, theta1, theta2] = q;
+    const cross1 = p1 * Math.cos(theta1);
+    const cross2 = p2 * Math.cos(theta2);
+    const crossLinks = coupling * Math.cos(theta1 - theta2);
+    return [
+      [totalMass, cross1, cross2],
+      [cross1, j1, crossLinks],
+      [cross2, crossLinks, j2],
+    ];
+  }
+
+  function solveMass(matrix, right) {
+    // The inertia matrix is symmetric positive definite at every configuration.
+    const [[h00, h01, h02], [, h11, h12], [, , h22]] = matrix;
+    const factor1 = h01 / h00;
+    const factor2 = h02 / h00;
+    const pivot1 = h11 - factor1 * h01;
+    const cross = h12 - factor1 * h02;
+    const factor21 = cross / pivot1;
+    const pivot2 = h22 - factor2 * h02 - factor21 * cross;
+    const right1 = right[1] - factor1 * right[0];
+    const right2 = right[2] - factor2 * right[0] - factor21 * right1;
+    const acceleration2 = right2 / pivot2;
+    const acceleration1 = (right1 - cross * acceleration2) / pivot1;
+    const acceleration0 = (right[0] - h01 * acceleration1 - h02 * acceleration2) / h00;
+    return [acceleration0, acceleration1, acceleration2];
+  }
+
+  function dynamics(state, force) {
+    const [, theta1, theta2, v, omega1, omega2] = state;
+    const moment1 = p1 * Math.sin(theta1);
+    const moment2 = p2 * Math.sin(theta2);
+    const cross = coupling * Math.sin(theta1 - theta2);
+    const acceleration = solveMass(mass(state), [
+      force - b * v + moment1 * omega1 ** 2 + moment2 * omega2 ** 2,
+      g * moment1 - cross * omega2 ** 2,
+      g * moment2 + cross * omega1 ** 2,
+    ]);
+    return [v, omega1, omega2, ...acceleration];
+  }
+
+  function step(state, force, dt) {
+    const k1 = dynamics(state, force);
+    const k2 = dynamics(state.map((value, i) => value + dt * k1[i] / 2), force);
+    const k3 = dynamics(state.map((value, i) => value + dt * k2[i] / 2), force);
+    const k4 = dynamics(state.map((value, i) => value + dt * k3[i]), force);
+    return state.map((value, i) => value + dt * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6);
+  }
+
+  const uprightMass = mass([0, 0, 0]);
+  const forceColumn = solveMass(uprightMass, [1, 0, 0]);
+  const gravityColumn1 = solveMass(uprightMass, [0, g * p1, 0]);
+  const gravityColumn2 = solveMass(uprightMass, [0, 0, g * p2]);
+  const A = Object.freeze([
+    [0, 0, 0, 1, 0, 0],
+    [0, 0, 0, 0, 1, 0],
+    [0, 0, 0, 0, 0, 1],
+    ...forceColumn.map((entry, i) => [0, gravityColumn1[i], gravityColumn2[i], -b * entry, 0, 0]),
+  ].map(row => Object.freeze(row)));
+  const B = Object.freeze([0, 0, 0, ...forceColumn]);
+
+  return Object.freeze({ params, constants, initialState, mass, dynamics, step, A, B });
+})();
+
+
+const Control = (() => {
+  const period = 0.01;
+  const defaultQ = "20 150 150 8 2 2";
+  const defaultR = "0.8";
+  const qField = { key: "q", label: "Q 对角线（6 项）", value: defaultQ, hint: "按 x, θ₁, θ₂, v, ω₁, ω₂ 排列" };
+  const rField = { key: "r", label: "R（推力惩罚）", value: defaultR };
+  const integralLimit = { key: "integralLimit", label: "积分限幅（m·s）", value: "2" };
+
+  const definitions = [
+    {
+      id: "lqr",
+      name: "LQR · 最优反馈",
+      description: "使用全部 6 个状态。增大某项 Q 会加重对应偏差的代价，增大 R 会加重推力的代价。",
+      fields: [qField, rField],
+    },
+    {
+      id: "pole",
+      name: "极点配置",
+      description: "用 Ackermann 公式按 6 个指定的连续极点计算反馈增益。",
+      fields: [
+        { key: "poles", label: "闭环极点（6 个实数，s⁻¹）", value: "-1.8 -2.4 -3.4 -4.8 -6.5 -8", hint: "全部为负数，允许重复根" },
+      ],
+    },
+    {
+      id: "lqi",
+      name: "LQI · 带积分的 LQR",
+      description: "把小车位置误差的积分作为第七个状态，适合抑制恒定扰动造成的稳态位置偏差。",
+      fields: [
+        qField,
+        { key: "qi", label: "积分权重 Qᵢ", value: "6" },
+        rField,
+        integralLimit,
+      ],
+    },
+    {
+      id: "pid",
+      name: "PID + 双摆角 PD",
+      description: "位置 PID 与两路摆角 PD 并联，三路反馈相加形成小车推力。",
+      fields: [
+        { key: "position", label: "位置 Kp、Ki、Kd（3 项）", value: "7.9794 2.3079 9.8673" },
+        { key: "angles", label: "摆角 Kp₁、Kd₁、Kp₂、Kd₂（4 项）", value: "-113.9422 2.2118 164.5176 21.5020" },
+        integralLimit,
+      ],
+    },
+    {
+      id: "mpc",
+      name: "MPC · 约束预测控制",
+      description: "用线性模型预测未来，在推力约束内优化整段控制量，每次只执行第一步。",
+      fields: [
+        qField,
+        rField,
+        { key: "horizon", label: "预测步数（每步 10 ms）", value: "28", hint: "5–60 的整数，末端代价取离散 Riccati 解" },
+        { key: "bound", label: "MPC 稳摆推力上限（N）", value: "30", hint: "摆起阶段使用执行器限幅" },
+      ],
+    },
+    {
+      id: "observer",
+      name: "观测器 + LQR",
+      description: "只读取小车位置和两杆角度，用线性观测器估计速度，再计算状态反馈。",
+      fields: [
+        qField,
+        rField,
+        { key: "rate", label: "估计误差衰减速率（s⁻¹）", value: "55" },
+      ],
+    },
+    {
+      id: "sliding",
+      name: "SMC · 滑模控制",
+      description: "在直立线性模型上设计滑模面，用饱和函数平滑切换项，以减轻抖振。",
+      fields: [
+        { key: "poles", label: "滑模面极点（5 个实数，s⁻¹）", value: "-1.8 -2.4 -3.4 -4.8 -6.5" },
+        { key: "reach", label: "线性趋近速率（s⁻¹）", value: "8" },
+        { key: "switch", label: "切换项幅值（N）", value: "2" },
+        { key: "width", label: "边界层宽度（N·s）", value: "0.35" },
+      ],
+    },
+    {
+      id: "gain",
+      name: "手填状态反馈 K",
+      description: "直接输入六个反馈增益。全部用同一负反馈符号，允许增益为负。",
+      fields: [
+        { key: "gain", label: "K（6 项）", value: "4.2234 -114.7620 155.3348 7.2042 0.6770 20.0823", hint: "按 x, θ₁, θ₂, v, ω₁, ω₂ 排列" },
+      ],
+    },
+    {
+      id: "open",
+      name: "开环 · 信号发生器",
+      description: "生成常量或正弦推力。开启自动摆起时，信号叠加在 LQR 稳摆推力上。关闭后可观察纯开环响应。",
+      fields: [
+        { key: "bias", label: "直流推力（N）", value: "0" },
+        { key: "amplitude", label: "正弦幅值（N）", value: "0" },
+        { key: "frequency", label: "频率（Hz）", value: "1" },
+      ],
+    },
+  ];
+
+  const zeros = (rows, columns) => Array.from({ length: rows }, () => Array(columns).fill(0));
+  const identity = size => zeros(size, size).map((row, i) => row.map((_, j) => Number(i === j)));
+  const dot = (left, right) => left.reduce((sum, value, i) => sum + value * right[i], 0);
+  const transpose = matrix => matrix[0].map((_, j) => matrix.map(row => row[j]));
+  const scale = (matrix, scalar) => matrix.map(row => row.map(value => value * scalar));
+  const multiply = (left, right) => {
+    const columns = transpose(right);
+    return left.map(row => columns.map(column => dot(row, column)));
+  };
+
+  function vector(source, size, label) {
+    const entries = String(source ?? "").trim().split(/[\s,，;；]+/);
+    const numbers = entries.map(value => value === "" ? NaN : Number(value));
+    if (numbers.length !== size || !numbers.every(Number.isFinite)) {
+      throw new Error(label + "需要 " + size + " 个有限数值");
+    }
+    return numbers;
+  }
+
+  function scalar(source, label, min, max) {
+    const [number] = vector(source, 1, label);
+    if (number < min || number > max) {
+      throw new Error(label + "的范围是 " + min + " 至 " + max);
+    }
+    return number;
+  }
+
+  const errorState = (z, ref) => [z[0] - ref, ...z.slice(1)];
+  const format = number => Math.abs(number) < 5e-7 ? "0" : Number(number.toPrecision(6)).toString();
+  const formatVector = values => "[" + values.map(format).join(", ") + "]";
+  const clamp = (value, limit) => Math.max(-limit, Math.min(limit, value));
+  const diagonal = weights => weights.map((weight, i) => weights.map((_, j) => i === j ? weight : 0));
+
+  // Zero-order hold via the convergent exponential series at a 10 ms sample period.
+  function discretize(A, B, dt = period) {
+    let termA = identity(A.length);
+    let termB = scale(B, dt);
+    const Ad = identity(A.length);
+    const Bd = termB.map(row => row.slice());
+    for (let order = 1; order <= 24; order += 1) {
+      termA = scale(multiply(termA, A), dt / order);
+      termB = scale(multiply(A, termB), dt / (order + 1));
+      for (let i = 0; i < A.length; i += 1) {
+        for (let j = 0; j < A.length; j += 1) Ad[i][j] += termA[i][j];
+        for (let j = 0; j < B[0].length; j += 1) Bd[i][j] += termB[i][j];
+      }
+    }
+    return { A: Ad, B: Bd };
+  }
+
+  function plantDiscrete(integral = false) {
+    const A = Plant.A.map(row => row.slice());
+    const B = Plant.B.map(value => [value]);
+    if (integral) {
+      A.forEach(row => row.push(0));
+      A.push([1, 0, 0, 0, 0, 0, 0]);
+      B.push([0]);
+    }
+    const plant = discretize(A, B);
+    return { A: plant.A, B: plant.B.map(row => row[0]) };
+  }
+
+  function weights(values) {
+    const Q = vector(values.q, 6, "Q 对角线");
+    if (Q.some(value => value < 0 || value > 1e7) || Q.every(value => value === 0)) {
+      throw new Error("Q 对角线各项须在 0 至 10⁷ 范围内，至少一项大于 0");
+    }
+    return { Q, R: scalar(values.r, "R", 0.0001, 1e7) };
+  }
+
+  function solveLqr({ A, B }, Q, R) {
+    const AT = transpose(A);
+    let P = diagonal(Q);
+    for (let iteration = 0; iteration < 12000; iteration += 1) {
+      const PB = P.map(row => dot(row, B));
+      const AT_PB = AT.map(row => dot(row, PB));
+      const divisor = R + dot(B, PB);
+      const AT_PA = multiply(multiply(AT, P), A);
+      let delta = 0;
+      let magnitude = 1;
+      const next = AT_PA.map((row, i) => row.map((value, j) => {
+        const updated = (value + AT_PA[j][i]) / 2 - AT_PB[i] * AT_PB[j] / divisor + (i === j ? Q[i] : 0);
+        delta = Math.max(delta, Math.abs(updated - P[i][j]));
+        magnitude = Math.max(magnitude, Math.abs(updated));
+        return updated;
+      }));
+      if (!Number.isFinite(magnitude)) break;
+      P = next;
+      if (delta <= 1e-10 * magnitude) {
+        const finalPB = P.map(row => dot(row, B));
+        const denominator = R + dot(B, finalPB);
+        return { P, K: AT.map(row => dot(row, finalPB) / denominator) };
+      }
+    }
+    throw new Error("Riccati 方程未收敛，请把 Q 或 R 调回更温和的范围");
+  }
+
+  function linearFeedback(K, detail = "") {
+    return {
+      run: ({ z, ref }) => -dot(K, errorState(z, ref)),
+      detail: "u = −K·e，K = " + formatVector(K) + (detail ? "。 " + detail : ""),
+    };
+  }
+
+  function solveLinear(matrix, right) {
+    const n = matrix.length;
+    const augmented = matrix.map((row, i) => [...row, right[i]]);
+    for (let column = 0; column < n; column += 1) {
+      let pivot = column;
+      for (let row = column + 1; row < n; row += 1) {
+        if (Math.abs(augmented[row][column]) > Math.abs(augmented[pivot][column])) pivot = row;
+      }
+      if (Math.abs(augmented[pivot][column]) < 1e-12) throw new Error("可控矩阵奇异，无法配置极点");
+      [augmented[column], augmented[pivot]] = [augmented[pivot], augmented[column]];
+      for (let row = column + 1; row < n; row += 1) {
+        const factor = augmented[row][column] / augmented[column][column];
+        for (let j = column; j <= n; j += 1) augmented[row][j] -= factor * augmented[column][j];
+      }
+    }
+    const solution = Array(n).fill(0);
+    for (let i = n - 1; i >= 0; i -= 1) {
+      let residual = augmented[i][n];
+      for (let j = i + 1; j < n; j += 1) residual -= augmented[i][j] * solution[j];
+      solution[i] = residual / augmented[i][i];
+    }
+    return solution;
+  }
+
+  function controlledPolynomialRow(poles) {
+    const { A, B } = Plant;
+    const n = A.length;
+    const controlColumns = [B];
+    let nextColumn = B;
+    for (let i = 1; i < n; i += 1) {
+      nextColumn = A.map(row => dot(row, nextColumn));
+      controlColumns.push(nextColumn);
+    }
+    const selector = Array(n).fill(0);
+    selector[n - 1] = 1;
+    let row = solveLinear(controlColumns, selector);
+    const AT = transpose(A);
+    // eₙᵀ Wc⁻¹ ∏(A − λᵢI).
+    for (const pole of poles) row = AT.map((column, i) => dot(row, column) - pole * row[i]);
+    return row;
+  }
+
+  function stablePoles(source, count) {
+    const poles = vector(source, count, "极点");
+    if (poles.some(value => value > -0.05 || value < -30)) {
+      throw new Error("每个极点须在 −30 至 −0.05 s⁻¹ 范围内");
+    }
+    return poles;
+  }
+
+  function integralFeedback(K, Ki, maxIntegral, detail) {
+    let integral = 0;
+    return {
+      run: ({ z, ref, dt }) => {
+        const e = errorState(z, ref);
+        const baseline = -dot(K, e);
+        const before = baseline - Ki * integral;
+        const candidateIntegral = clamp(integral + dt * e[0], maxIntegral);
+        const candidate = baseline - Ki * candidateIntegral;
+        const limit = Plant.params.forceLimit;
+        // If saturated, permit integration only when it unwinds the saturation.
+        if (Math.abs(candidate) <= limit || Math.abs(candidate) < Math.abs(before)) integral = candidateIntegral;
+        return baseline - Ki * integral;
+      },
+      reset: () => { integral = 0; },
+      detail: detail + " K = " + formatVector(K) + "，Kᵢ = " + format(Ki) + "。推力饱和时抑制积分累积。",
+    };
+  }
+
+  function cholesky(matrix) {
+    const n = matrix.length;
+    const lower = zeros(n, n);
+    for (let row = 0; row < n; row += 1) {
+      for (let column = 0; column <= row; column += 1) {
+        let residual = matrix[row][column];
+        for (let j = 0; j < column; j += 1) residual -= lower[row][j] * lower[column][j];
+        if (row === column && !(residual > 0)) throw new Error("MPC 的代价矩阵不再正定");
+        lower[row][column] = row === column ? Math.sqrt(residual) : residual / lower[column][column];
+      }
+    }
+    return lower;
+  }
+
+  function solveCholesky(lower, right) {
+    const result = right.slice();
+    for (let row = 0; row < result.length; row += 1) {
+      for (let j = 0; j < row; j += 1) result[row] -= lower[row][j] * result[j];
+      result[row] /= lower[row][row];
+    }
+    for (let row = result.length - 1; row >= 0; row -= 1) {
+      for (let j = row + 1; j < result.length; j += 1) result[row] -= lower[j][row] * result[j];
+      result[row] /= lower[row][row];
+    }
+    return result;
+  }
+
+  function predictController(horizon, bound, Q, R) {
+    const { A, B } = plantDiscrete();
+    const { P } = solveLqr({ A, B }, Q, R);
+    const n = A.length;
+    const H = diagonal(Array(horizon).fill(R));
+    const C = zeros(horizon, n);
+    const stageQ = diagonal(Q);
+    let stateMap = identity(n);
+    let inputMap = zeros(n, horizon);
+
+    // Condense the predicted states into e[k] = stateMap * e[0] + inputMap * U.
+    for (let k = 1; k <= horizon; k += 1) {
+      stateMap = multiply(A, stateMap);
+      inputMap = multiply(A, inputMap);
+      for (let i = 0; i < n; i += 1) inputMap[i][k - 1] = B[i];
+      const weightedInputs = multiply(transpose(inputMap), k === horizon ? P : stageQ);
+      const inputCost = multiply(weightedInputs, inputMap);
+      const crossCost = multiply(weightedInputs, stateMap);
+      for (let i = 0; i < k; i += 1) {
+        for (let j = 0; j < k; j += 1) H[i][j] += inputCost[i][j];
+        for (let j = 0; j < n; j += 1) C[i][j] += crossCost[i][j];
+      }
+    }
+
+    const lower = cholesky(H);
+    let lastSequence;
+    return {
+      run: ({ z, ref }) => {
+        const e = errorState(z, ref);
+        const gradientOffset = C.map(row => dot(row, e));
+        const free = solveCholesky(lower, gradientOffset.map(value => -value));
+        if (free.every(value => Math.abs(value) <= bound)) {
+          lastSequence = free;
+          return free[0];
+        }
+        const U = lastSequence
+          ? [...lastSequence.slice(1), lastSequence[horizon - 1]]
+          : free.map(value => clamp(value, bound));
+        const gradient = H.map((row, i) => dot(row, U) + gradientOffset[i]);
+        for (let sweep = 0; sweep < 30; sweep += 1) {
+          let largestUpdate = 0;
+          for (let i = 0; i < horizon; i += 1) {
+            const change = clamp(U[i] - gradient[i] / H[i][i], bound) - U[i];
+            U[i] += change;
+            largestUpdate = Math.max(largestUpdate, Math.abs(change));
+            for (let j = 0; j < horizon; j += 1) gradient[j] += H[j][i] * change;
+          }
+          if (largestUpdate < 1e-5) break;
+        }
+        lastSequence = U;
+        return U[0];
+      },
+      reset: () => { lastSequence = undefined; },
+      detail: "预测窗 " + format(horizon * period) + " s，约束 |u| ≤ " + format(bound)
+        + " N。使用离散 LQR 的末端代价，带约束时迭代求解。",
+    };
+  }
+
+  function observerFeedback(K, rate) {
+    const { A, B } = plantDiscrete();
+    const positionFromVelocity = A.slice(0, 3).map(row => row.slice(3));
+    const velocityFromVelocity = A.slice(3).map(row => row.slice(3));
+    const pole = Math.exp(-rate * period);
+    const target = velocityFromVelocity.map((row, i) => row.map((value, j) => value - (i === j ? pole : 0)));
+    // Reduced-order observer error advances by Ad_vv − L Ad_qv. Select this as pole*I.
+    const measurementMap = transpose(positionFromVelocity);
+    const L = target.map(row => solveLinear(measurementMap, row));
+    let prediction;
+    return {
+      run: ({ z, ref, applied }) => {
+        const measured = z.slice(0, 3);
+        let velocity = [0, 0, 0];
+        if (prediction) {
+          const correction = Number.isFinite(applied) ? applied - prediction.input : 0;
+          const residual = measured.map((value, i) => value - prediction.state[i] - B[i] * correction);
+          velocity = L.map((row, i) => prediction.state[i + 3] + B[i + 3] * correction + dot(row, residual));
+        }
+        const estimate = [...measured, ...velocity];
+        const u = -dot(K, errorState(estimate, ref));
+        const input = clamp(u, Plant.params.forceLimit);
+        prediction = { input, state: A.map((row, i) => dot(row, estimate) + B[i] * input) };
+        return u;
+      },
+      reset: () => { prediction = undefined; },
+      detail: "测量 y = [x, θ₁, θ₂]ᵀ，降阶观测器的离散极点均为 " + format(pole)
+        + "。使用 u = −K·ê，K = " + formatVector(K) + "。",
+    };
+  }
+
+  function build(id, input = {}) {
+    const definition = definitions.find(candidate => candidate.id === id);
+    if (!definition) throw new Error("未知控制器");
+    const values = { ...Object.fromEntries(definition.fields.map(field => [field.key, field.value])), ...input };
+
+    switch (id) {
+      case "lqr": {
+        const { Q, R } = weights(values);
+        return linearFeedback(solveLqr(plantDiscrete(), Q, R).K, "以 10 ms 零阶保持模型设计。");
+      }
+      case "pole": {
+        const poles = stablePoles(values.poles, 6);
+        return linearFeedback(controlledPolynomialRow(poles), "连续闭环极点 λ = " + formatVector(poles) + " s⁻¹。");
+      }
+      case "lqi": {
+        const { Q, R } = weights(values);
+        const integralWeight = scalar(values.qi, "积分权重", 0.0001, 1e7);
+        const limit = scalar(values.integralLimit, "积分限幅", 0.001, 100);
+        const { K } = solveLqr(plantDiscrete(true), [...Q, integralWeight], R);
+        return integralFeedback(K.slice(0, 6), K[6], limit, "u = −K·e − Kᵢ∫(x−xᵣ)dt。");
+      }
+      case "pid": {
+        const [positionP, positionI, positionD] = vector(values.position, 3, "位置 PID");
+        const [angle1P, angle1D, angle2P, angle2D] = vector(values.angles, 4, "摆角 PD");
+        const limit = scalar(values.integralLimit, "积分限幅", 0.001, 100);
+        const K = [positionP, angle1P, angle2P, positionD, angle1D, angle2D];
+        return integralFeedback(K, positionI, limit, "位置 PID 与两杆 PD 的总和，u = −K·e − Kᵢ∫(x−xᵣ)dt。");
+      }
+      case "mpc": {
+        const { Q, R } = weights(values);
+        const horizon = scalar(values.horizon, "预测步数", 5, 60);
+        if (!Number.isInteger(horizon)) throw new Error("预测步数必须为整数");
+        const bound = scalar(values.bound, "推力上限", 0.1, Plant.params.forceLimit);
+        return predictController(horizon, bound, Q, R);
+      }
+      case "observer": {
+        const { Q, R } = weights(values);
+        const rate = scalar(values.rate, "观测器衰减速率", 1, 100);
+        return observerFeedback(solveLqr(plantDiscrete(), Q, R).K, rate);
+      }
+      case "sliding": {
+        const surface = controlledPolynomialRow(stablePoles(values.poles, 5));
+        const reach = scalar(values.reach, "趋近速率", 0.01, 30);
+        const switching = scalar(values.switch, "切换项幅值", 0, Plant.params.forceLimit);
+        const width = scalar(values.width, "边界层宽度", 0.001, 30);
+        const SA = transpose(Plant.A).map(column => dot(surface, column));
+        const SB = dot(surface, Plant.B);
+        return {
+          run: ({ z, ref }) => {
+            const e = errorState(z, ref);
+            const s = dot(surface, e);
+            return -(dot(SA, e) + reach * s + switching * clamp(s / width, 1)) / SB;
+          },
+          detail: "s = S·e，S = " + formatVector(surface) + "。"
+            + "u = −(S·A·e + k·s + η·sat(s/φ)) / (S·B)。",
+        };
+      }
+      case "gain":
+        return linearFeedback(vector(values.gain, 6, "反馈增益"));
+      case "open": {
+        const bias = scalar(values.bias, "直流推力", -Plant.params.forceLimit, Plant.params.forceLimit);
+        const amplitude = scalar(values.amplitude, "正弦幅值", 0, Plant.params.forceLimit);
+        const frequency = scalar(values.frequency, "频率", 0, 30);
+        return {
+          run: ({ t }) => bias + amplitude * Math.sin(2 * Math.PI * frequency * t),
+          detail: "u(t) = " + format(bias) + " + " + format(amplitude) + "·sin(2π·" + format(frequency) + "·t) N。",
+        };
+      }
+    }
+  }
+
+  return { definitions, build };
+})();
+
+
+const Expression = (() => {
+  const variables = new Set(["x", "th1", "th2", "v", "w1", "w2", "r", "ex", "t", "dt", "s1", "s2", "s3"]);
+  const constants = new Map([["pi", Math.PI], ["e", Math.E]]);
+  const functions = new Map([
+    ...["sin", "cos", "tan", "asin", "acos", "atan", "tanh", "abs", "sign", "sqrt", "exp", "log", "floor", "ceil"]
+      .map(name => [name, { min: 1, max: 1, fn: Math[name] }]),
+    ["atan2", { min: 2, max: 2, fn: Math.atan2 }],
+    ["pow", { min: 2, max: 2, fn: Math.pow }],
+    ["min", { min: 2, max: 8, fn: Math.min }],
+    ["max", { min: 2, max: 8, fn: Math.max }],
+    ["clamp", { min: 3, max: 3, fn: (x, lo, hi) => Math.min(hi, Math.max(lo, x)) }],
+    ["if", { min: 3, max: 3 }],
+  ]);
+  const binary = new Map([
+    ["||", [1, (a, b) => Number(Boolean(a || b()))]],
+    ["&&", [2, (a, b) => Number(Boolean(a && b()))]],
+    ["==", [3, (a, b) => Number(a === b())]],
+    ["!=", [3, (a, b) => Number(a !== b())]],
+    ["<", [4, (a, b) => Number(a < b())]],
+    ["<=", [4, (a, b) => Number(a <= b())]],
+    [">", [4, (a, b) => Number(a > b())]],
+    [">=", [4, (a, b) => Number(a >= b())]],
+    ["+", [5, (a, b) => a + b()]],
+    ["-", [5, (a, b) => a - b()]],
+    ["*", [6, (a, b) => a * b()]],
+    ["/", [6, (a, b) => a / b()]],
+    ["^", [8, (a, b) => a ** b()]],
+    ["**", [8, (a, b) => a ** b()]],
+  ]);
+
+  function compile(source) {
+    const input = source.trim();
+    if (input.length === 0 || input.length > 500) {
+      throw new Error("表达式应包含 1 至 500 个字符");
+    }
+    const tokenizer = /\s+|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|[a-zA-Z][a-zA-Z0-9]*|\*\*|<=|>=|==|!=|&&|\|\||[()+\-*/^,<>!]/gy;
+    const tokens = [];
+    let offset = 0;
+    while (offset < input.length) {
+      const match = tokenizer.exec(input);
+      if (!match) throw new Error("无法识别字符「" + input[offset] + "」");
+      if (match[0].trim()) tokens.push(match[0]);
+      offset = tokenizer.lastIndex;
+    }
+    let index = 0;
+
+    function expect(token) {
+      if (tokens[index] !== token) throw new Error("此处需要「" + token + "」");
+      index += 1;
+    }
+
+    function atom() {
+      const token = tokens[index++];
+      if (token === undefined) throw new Error("表达式未结束");
+      if (token === "(") {
+        const inner = parse(0);
+        expect(")");
+        return inner;
+      }
+      if (token === "+" || token === "-" || token === "!") {
+        const operand = parse(7);
+        if (token === "-") return env => -operand(env);
+        if (token === "!") return env => Number(!operand(env));
+        return operand;
+      }
+      if (/^[0-9.]/.test(token)) {
+        const value = Number(token);
+        if (!Number.isFinite(value)) throw new Error("数值超出范围");
+        return () => value;
+      }
+      if (constants.has(token)) return () => constants.get(token);
+      if (variables.has(token)) return env => env[token];
+      const entry = functions.get(token);
+      if (!entry) throw new Error("未知变量或函数「" + token + "」");
+      expect("(");
+      const args = [];
+      if (tokens[index] !== ")") {
+        args.push(parse(0));
+        while (tokens[index] === ",") {
+          index += 1;
+          args.push(parse(0));
+        }
+      }
+      expect(")");
+      if (args.length < entry.min || args.length > entry.max) {
+        throw new Error("函数 " + token + " 的参数个数有误");
+      }
+      if (token === "if") return env => args[0](env) ? args[1](env) : args[2](env);
+      return env => entry.fn(...args.map(arg => arg(env)));
+    }
+
+    function parse(minPrecedence) {
+      let left = atom();
+      while (binary.has(tokens[index])) {
+        const op = tokens[index];
+        const [precedence, evaluate] = binary.get(op);
+        if (precedence < minPrecedence) break;
+        index += 1;
+        const right = parse(precedence + (op === "^" || op === "**" ? 0 : 1));
+        const previous = left;
+        left = env => evaluate(previous(env), () => right(env));
+      }
+      return left;
+    }
+
+    const evaluate = parse(0);
+    if (index < tokens.length) throw new Error("「" + tokens[index] + "」前可能缺少运算符");
+    return evaluate;
+  }
+
+  function controller(forceSource, stateSources) {
+    const force = compile(forceSource);
+    const rates = stateSources.map(compile);
+    let states = [0, 0, 0];
+    return {
+      detail: "已编译 u 与三条内部状态微分方程。内部状态会在重置时归零。",
+      run({z, ref, t, dt}) {
+        const [x, th1, th2, v, w1, w2] = z;
+        const [s1, s2, s3] = states;
+        const env = {x, th1, th2, v, w1, w2, r: ref, ex: x - ref, t, dt, s1, s2, s3};
+        const output = force(env);
+        const next = rates.map((rate, i) => states[i] + dt * rate(env));
+        if (!Number.isFinite(output) || next.some(value => !Number.isFinite(value) || Math.abs(value) > 1e9)) {
+          throw new Error("控制律产生非有限输出，或内部状态超出数值范围");
+        }
+        states = next;
+        return output;
+      },
+    };
+  }
+
+  return Object.freeze({compile, controller});
+})();
+
+
+const Visuals = (() => {
+  const palette = Object.freeze({
+    background: '#101a26',
+    chart: '#101821',
+    grid: '#213041',
+    gridMinor: '#192635',
+    baseline: '#36485e',
+    frame: '#34475b',
+    text: '#edf4ff',
+    muted: '#9daec1',
+    teal: '#54dfc8',
+    amber: '#f2b86d',
+    reference: '#92a2e0',
+    blue: '#82aafc',
+    cart: '#a5b6ca',
+    cartTop: '#d0dfed',
+    cartDark: '#52647c',
+    wheel: '#29384a',
+    rail: '#71839a',
+    force: '#f184ad'
+  });
+  const mono = '"IBM Plex Mono", Consolas, monospace';
+  const sans = 'Inter, "Microsoft YaHei UI", "PingFang SC", sans-serif';
+  const degrees = 180 / Math.PI;
+  const angleDegrees = angle => ((angle * degrees + 180) % 360 + 360) % 360 - 180;
+  const plotSpecs = {
+    position: { minimum: 0.4, lines: [
+      { color: 'blue', value: p => p.z[0] },
+      { color: 'reference', dashed: true, value: p => p.ref }
+    ] },
+    angles: { minimum: 8, lines: [
+      { color: 'teal', value: p => angleDegrees(p.z[1]), jump: 180 },
+      { color: 'amber', value: p => angleDegrees(p.z[2]), jump: 180 }
+    ] },
+    velocity: { minimum: 0.25, lines: [
+      { color: 'blue', value: p => p.z[3] }
+    ] },
+    angularVelocity: { minimum: 15, lines: [
+      { color: 'teal', value: p => p.z[4] * degrees },
+      { color: 'amber', value: p => p.z[5] * degrees }
+    ] },
+    force: { minimum: 5, lines: [
+      { color: 'force', value: p => p.u }
+    ] }
+  };
+
+  function surface(canvas) {
+    if (!canvas) return null;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    return () => {
+      const bounds = canvas.getBoundingClientRect();
+      if (bounds.width < 2 || bounds.height < 2) return null;
+      const ratio = Math.min(globalThis.devicePixelRatio || 1, 3);
+      const width = Math.round(bounds.width * ratio);
+      const height = Math.round(bounds.height * ratio);
+      if (canvas.width !== width) canvas.width = width;
+      if (canvas.height !== height) canvas.height = height;
+      ctx.setTransform(width / bounds.width, 0, 0, height / bounds.height, 0, 0);
+      return { ctx, width: bounds.width, height: bounds.height };
+    };
+  }
+
+  function segment(ctx, x0, y0, x1, y1, color, width = 1) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+  }
+
+  function dot(ctx, x, y, radius, color, outline) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+    ctx.fill();
+    if (outline) {
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  function label(ctx, value, x, y, { color = palette.muted, align = 'left', size = 11, family = mono } = {}) {
+    ctx.font = `${size}px ${family}`;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(value, x, y);
+  }
+
+  function rectangle(ctx, x, y, width, height, radius, color, outline) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, radius);
+    ctx.fillStyle = color;
+    ctx.fill();
+    if (outline) {
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  function grid(ctx, width, height, originX, originY, spacing) {
+    for (let i = Math.ceil(-originX / spacing); i <= Math.floor((width - originX) / spacing); i++) {
+      const x = Math.round(originX + i * spacing) + 0.5;
+      segment(ctx, x, 0, x, height, i % 4 === 0 ? palette.grid : palette.gridMinor);
+    }
+    for (let i = Math.ceil(-originY / spacing); i <= Math.floor((height - originY) / spacing); i++) {
+      const y = Math.round(originY + i * spacing) + 0.5;
+      segment(ctx, 0, y, width, y, i % 4 === 0 ? palette.grid : palette.gridMinor);
+    }
+  }
+
+  function drawRod(ctx, from, to, color, width) {
+    ctx.lineCap = 'round';
+    segment(ctx, from.x, from.y, to.x, to.y, palette.chart, width + 5);
+    segment(ctx, from.x, from.y, to.x, to.y, color, width);
+    ctx.lineCap = 'butt';
+  }
+
+  function drawTrack(ctx, originX, railY, meters, railLimit) {
+    const left = originX - railLimit * meters;
+    const right = originX + railLimit * meters;
+    segment(ctx, left, railY + 5, right, railY + 5, palette.cartDark, 1);
+    segment(ctx, left, railY, right, railY, palette.rail, 2);
+    for (const x of [left, right]) {
+      segment(ctx, x, railY - 7, x, railY + 7, palette.rail, 2);
+    }
+    for (let tick = Math.ceil(-railLimit * 2); tick <= Math.floor(railLimit * 2); tick++) {
+      const x = originX + tick * meters / 2;
+      const major = tick % 2 === 0;
+      segment(ctx, x, railY + 9, x, railY + (major ? 17 : 13), major ? palette.rail : palette.baseline);
+      if (major) label(ctx, String(tick / 2), x, railY + 26, { align: 'center', size: 10 });
+    }
+    label(ctx, 'x (m)', right, railY + 26, { align: 'right', size: 10 });
+  }
+
+  function drawTarget(ctx, x, railY, top) {
+    ctx.setLineDash([4, 5]);
+    segment(ctx, x, top, x, railY - 5, palette.reference);
+    ctx.setLineDash([]);
+    ctx.fillStyle = palette.reference;
+    ctx.beginPath();
+    ctx.moveTo(x, railY - 1);
+    ctx.lineTo(x - 5, railY + 7);
+    ctx.lineTo(x + 5, railY + 7);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawCart(ctx, x, railY, width) {
+    const wheelRadius = width > 54 ? 7 : 5;
+    const wheelY = railY - wheelRadius;
+    for (const wheelX of [x - width * 0.29, x + width * 0.29]) {
+      dot(ctx, wheelX, wheelY, wheelRadius, palette.wheel, palette.rail);
+      dot(ctx, wheelX, wheelY, 1.5, palette.cartTop);
+    }
+    const height = width > 54 ? 22 : 18;
+    const top = wheelY - height - 1;
+    rectangle(ctx, x - width / 2, top, width, height, 4, palette.cart, palette.cartTop);
+    rectangle(ctx, x - width / 2 + 5, top + height - 6, width - 10, 2, 1, palette.cartDark);
+    return { x, y: top - 2 };
+  }
+
+  function drawForce(ctx, x, y, u, maxForce, width) {
+    if (!Number.isFinite(u) || Math.abs(u) < 0.08) return;
+    const sign = Math.sign(u);
+    const length = 12 + 62 * Math.min(Math.abs(u) / maxForce, 1);
+    const end = Math.max(13, Math.min(width - 13, x + length * sign));
+    if ((end - x) * sign < 6) return;
+    segment(ctx, x, y, end, y, palette.force, 1.8);
+    segment(ctx, end - 5 * sign, y - 4, end, y, palette.force, 1.8);
+    segment(ctx, end - 5 * sign, y + 4, end, y, palette.force, 1.8);
+  }
+
+  function drawScene(frame, z, ref, u, params) {
+    const { ctx, width, height } = frame;
+    const originX = width / 2;
+    const railY = Math.round(height * 0.71) + 0.5;
+    if (width < 100 || height < 100) return;
+    const meters = Math.min((width - 56) / (2 * params.railLimit), (height - railY + 10) / (params.L1 + params.L2));
+    const x = originX + z[0] * meters;
+    const cartWidth = Math.min(66, Math.max(36, meters * 0.53));
+    const legendY = height > 200 ? 21 : 15;
+
+    ctx.fillStyle = palette.background;
+    ctx.fillRect(0, 0, width, height);
+    grid(ctx, width, height, originX, railY, Math.max(15, meters / 4));
+    segment(ctx, 0, railY + 43, width, railY + 43, palette.grid);
+    drawTrack(ctx, originX, railY, meters, params.railLimit);
+    const markerTop = Math.max(legendY + 15, railY - (params.L1 + params.L2) * meters - 56);
+    drawTarget(ctx, originX + ref * meters, railY, markerTop);
+    const pivot = drawCart(ctx, x, railY, cartWidth);
+    const joint = {
+      x: pivot.x + params.L1 * meters * Math.sin(z[1]),
+      y: pivot.y - params.L1 * meters * Math.cos(z[1])
+    };
+    const tip = {
+      x: joint.x + params.L2 * meters * Math.sin(z[2]),
+      y: joint.y - params.L2 * meters * Math.cos(z[2])
+    };
+
+    drawForce(ctx, x + Math.sign(u) * (cartWidth / 2 + 4), pivot.y + 9, u, params.forceLimit, width);
+    drawRod(ctx, pivot, joint, palette.teal, 7);
+    drawRod(ctx, joint, tip, palette.amber, 6);
+    dot(ctx, pivot.x, pivot.y, 5.4, palette.chart, palette.cartTop);
+    dot(ctx, pivot.x, pivot.y, 1.7, palette.teal);
+    dot(ctx, joint.x, joint.y, 5, palette.chart, palette.amber);
+    dot(ctx, joint.x, joint.y, 1.5, palette.cartTop);
+    dot(ctx, tip.x, tip.y, 4, palette.amber, palette.background);
+
+    const legend = [
+      { text: '下杆', color: palette.teal },
+      { text: '上杆', color: palette.amber },
+      { text: '目标位置', color: palette.reference, dashed: true }
+    ];
+    let legendX = 17;
+    for (const item of legend) {
+      if (item.dashed) ctx.setLineDash([3, 3]);
+      segment(ctx, legendX, legendY, legendX + 11, legendY, item.color, 2);
+      ctx.setLineDash([]);
+      label(ctx, item.text, legendX + 16, legendY, { family: sans });
+      legendX += 56;
+    }
+    if (height > 240 && width >= 360) {
+      label(ctx, `行程 ±${params.railLimit.toFixed(1)} m`, width - 16, height - 19, { align: 'right', family: sans });
+    }
+  }
+
+  function niceStep(target) {
+    const base = 10 ** Math.floor(Math.log10(target));
+    const ratio = target / base;
+    for (const multiple of [1, 2, 2.5, 5, 10]) {
+      if (ratio <= multiple) return multiple * base;
+    }
+    return 10 * base;
+  }
+
+  function tickText(value, step) {
+    let digits = 0;
+    let scaled = step;
+    while (Math.abs(Math.round(scaled) - scaled) > 1e-8 && digits < 4) {
+      digits++;
+      scaled *= 10;
+    }
+    const normalized = Math.abs(value) < step / 100 ? 0 : value;
+    return normalized.toFixed(digits).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  }
+
+  function plotBounds(history, spec, start, memory, endTime) {
+    let maximum = spec.minimum;
+    for (const point of history) {
+      if (point.t < start) continue;
+      for (const line of spec.lines) {
+        const value = line.value(point);
+        if (Number.isFinite(value)) maximum = Math.max(maximum, Math.abs(value) * 1.08);
+      }
+    }
+    const nextStep = niceStep(maximum / 2);
+    if (!memory.step || endTime < memory.time || nextStep > memory.step || nextStep * 2 <= memory.step) {
+      memory.step = nextStep;
+    }
+    memory.time = endTime;
+    return memory.step;
+  }
+
+  function plotTrace(ctx, line, history, mapX, mapY, start, end, endTime) {
+    ctx.strokeStyle = palette[line.color];
+    ctx.lineWidth = line.dashed ? 1.15 : 1.9;
+    ctx.lineJoin = 'round';
+    if (line.dashed) ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    let penDown = false;
+    let last = null;
+    let previousValue;
+    for (let i = 0; i < history.length; i++) {
+      const point = history[i];
+      if (point.t < start && (i === history.length - 1 || history[i + 1].t < start)) continue;
+      if (point.t > end) break;
+      const value = line.value(point);
+      if (!Number.isFinite(value)) {
+        penDown = false;
+        continue;
+      }
+      const x = mapX(point.t);
+      const y = mapY(value);
+      if (penDown && (!line.jump || Math.abs(value - previousValue) <= line.jump)) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+      penDown = true;
+      previousValue = value;
+      if (point.t >= start && point.t === endTime) last = { x, y };
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (last && !line.dashed) dot(ctx, last.x, last.y, 2.5, palette[line.color]);
+  }
+
+  function drawPlot(frame, history, spec, options, memory) {
+    const { ctx, width, height } = frame;
+    ctx.fillStyle = palette.chart;
+    ctx.fillRect(0, 0, width, height);
+    if (width < 95 || height < 67) return;
+
+    const windowSeconds = Number.isFinite(options.windowSeconds) && options.windowSeconds > 0 ? options.windowSeconds : 12;
+    const endTime = history.at(-1)?.t ?? 0;
+    const end = Math.max(windowSeconds, endTime);
+    const start = end - windowSeconds;
+    const step = plotBounds(history, spec, start, memory, endTime);
+    const upper = 2 * step;
+    const top = 10.5;
+    const bottom = height - 23.5;
+    const left = width > 170 ? 48.5 : 38.5;
+    const right = width - 12.5;
+    const mapX = time => left + (time - start) / windowSeconds * (right - left);
+    const mapY = value => top + (upper - value) / (2 * upper) * (bottom - top);
+    const timeStep = niceStep(windowSeconds / Math.max(2, Math.floor((right - left) / 57)));
+
+    for (let tick = -2; tick <= 2; tick++) {
+      if (bottom - top < 62 && Math.abs(tick) === 1) continue;
+      const value = tick * step;
+      const y = Math.round(mapY(value)) + 0.5;
+      segment(ctx, left, y, right, y, tick === 0 ? palette.baseline : palette.grid);
+      label(ctx, tickText(value, step), left - 7, y, { align: 'right', size: 10 });
+    }
+    for (let tick = Math.ceil((start - 1e-9) / timeStep); tick * timeStep <= end + 1e-9; tick++) {
+      const value = tick * timeStep;
+      const x = Math.round(mapX(value)) + 0.5;
+      segment(ctx, x, top, x, bottom, palette.grid);
+      if (x < right - 19) label(ctx, tickText(value, timeStep), x, height - 10.5, { align: 'center', size: 10 });
+    }
+    segment(ctx, left, top, left, bottom, palette.frame);
+    segment(ctx, right, top, right, bottom, palette.frame);
+    label(ctx, 't (s)', right, height - 10.5, { align: 'right', size: 10 });
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left, top, right - left, bottom - top);
+    ctx.clip();
+    for (const line of spec.lines) plotTrace(ctx, line, history, mapX, mapY, start, end, endTime);
+    ctx.restore();
+  }
+
+  function create({ scene, plots, params }) {
+    const sceneSurface = surface(scene);
+    const chartSurfaces = Object.entries(plotSpecs).map(([name, spec]) => ({
+      frame: surface(plots[name]), spec, memory: { step: 0, time: 0 }
+    })).filter(chart => chart.frame);
+    const plantParams = params ?? Plant.params;
+    return {
+      drawScene(z, ref, u) {
+        const frame = sceneSurface?.();
+        if (frame && z.every(Number.isFinite)) drawScene(frame, z, ref, u, plantParams);
+      },
+      drawPlots(history, options = {}) {
+        for (const chart of chartSurfaces) {
+          const frame = chart.frame();
+          if (frame) drawPlot(frame, history, chart.spec, options, chart.memory);
+        }
+      }
+    };
+  }
+
+  return { create, palette };
+})();
+
+
+const SwingSeeds = Object.freeze([{"dt":0.04,"z0":[0,-3.141592653589793,-3.141592653589793,0,0,0],"target":[0,0],"controls":[-4.177484301253675,-5.085310668660154,-5.499005016109614,-5.637425393719921,-5.670241388345271,-5.652578858553027,-5.540143727523025,-5.2862994822638925,-4.908694867215095,-4.5282683305474905,-4.21985796151249,-3.879951749342459,-3.221393923110984,-2.072864160453124,-0.43992563000409635,1.6054744765241193,3.9794886827198996,6.635877968152789,9.51223204748151,12.428833996075916,14.986693080960377,16.589319753030164,16.650421028940187,14.757168179465996,12.001136157610398,9.445627937514416,6.344471090429227,2.968369967617722,-0.1757439247631072,-2.707641525339701,-4.328625645727234,-4.9178825931463175,-4.835898479580598,-4.482736298647983,-4.055243919757909,-3.6382558039030646,-3.2573775694460254,-2.9364976000466307,-2.6751252949029483,-2.4541869790429622,-2.273765042726668,-2.1227048237292476,-2.0052868972790896,-1.9102397924121004,-1.8327241920628243,-1.7672991520641081,-1.7102961082609667,-1.658301181634294,-1.6071918487411618,-1.5523535286152434,-1.4893404649848494,-1.4120857198895038,-1.3140036887944613,-1.1874965613308262,-1.0242097880777852,-0.8153230529826697,-0.5525909543704353,-0.22966494490483577,0.15423982017564136,0.5874038838228763,1.0299328185601575,1.4158728416172326,1.6241351193989588,1.4388645774761115,0.47890048176522154,-1.8849175143317354],"maxX":1.0382968624724243,"terminalError":4.5003410262256516e-8},{"z0":[0,0,-3.141592653589793,0,0,0],"target":[0,0],"dt":0.04,"controls":[10.206883375460228,4.411809230761975,-0.8565408611142676,-5.402562754695351,-8.882672341427316,-10.88155413040774,-11.15666794329954,-9.878550890858127,-7.544262630821587,-4.608613977026577,-1.289084432470983,2.3089923372374574,6.022898484169408,9.448758323645219,11.908762447049028,12.710395480076155,11.762013958535881,9.424362552412019,6.669687369447994,3.790226840881494,0.5851585707333344,-3.1214261220347197,-7.200977493202637,-11.251070179794532,-14.518689244208575,-16.044792352660572,-15.077914081743524,-11.697619579038331,-8.064539839061135,-5.165898362830882,-2.3166065393039728,1.093758321871146,5.155029184788818,9.705483870149333,14.523111716873006,19.279434023792646,22.95851280666643,23.516623003098797,18.77017199375382,9.950503480701283,4.13491880236698,1.8334960150266384,0.48073561184991587,-0.8751637734323825,-2.4679296189788476,-4.265339888214491,-6.0201983655280165,-7.3803723732317525,-8.159561457612478,-8.432277213662399,-8.354432416213596,-8.027803900914979,-7.491455725831782,-6.746918758860835,-5.782087386283354,-4.586249755783865,-3.1616957752930466,-1.530018889030908,0.2609218025321478,2.125216919499982,3.8834808021156326,5.305778661921188,5.955328138336282,5.090297233078684,1.5132561078722846,-6.544458156184206]},{"z0":[0,-3.141592653589793,0,0,0,0],"target":[0,0],"dt":0.04,"controls":[1.0933583894735355,2.606553720576579,2.5701936768161073,1.4173707065870806,-0.4822071305085254,-2.773531113288996,-5.139919430226711,-7.36434908237249,-9.227118783552715,-10.426367711482424,-10.547867032209917,-9.335774125806635,-6.990658450476077,-4.195531297261298,-1.744242044122122,0.12711884056593956,1.4826965813397313,2.520103328214464,3.5082810741959123,4.730064351715724,6.461000324584838,8.852135486213157,11.920878117231755,14.833833586364248,15.87823693306528,12.966943193681454,7.974424532047385,3.669486705464478,1.1450237089785649,-0.03663418992660719,-0.571244864043599,-0.8525402900941628,-1.0152391821998819,-1.0924201859588465,-1.0810126804967695,-0.9994801975283314,-0.9006684816854957,-0.8329122218028047,-0.8191855636838252,-0.8628520524744557,-0.9562307988554305,-1.0897141782645197,-1.2546480088242056,-1.4398039540576806,-1.6366645046920876,-1.8367840042164933,-2.031966478105221,-2.2133014128407504,-2.371160419622089,-2.4938170412459204,-2.5695242881594704,-2.5847561497687725,-2.52668526249484,-2.379034491333487,-2.134925476172921,-1.7778861263783758,-1.307039827568643,-0.7210896679897978,-0.03314511178445955,0.7225179045757072,1.4784303463477237,2.1181277448834357,2.4465041000029375,2.139908875498756,0.6889004550942743,-2.702159963675463]},{"z0":[0,-1.5707963267948966,0.7853981633974483,0,0,0],"target":[0,0],"dt":0.04,"controls":[15.895946814595021,7.480959343745776,-1.5680565569896459,-8.255934207133558,-11.157620895876068,-8.45644879600642,4.152857657933845,12.254581955916453,10.38796828941922,-2.0837930496383237,-16.42012325594634,-10.441227678674753,0.21027527172423102,12.652628293945238,13.698166075502554,9.8661150425186,5.0338435469913465,0.9236240556271588,-2.1246961436918457,-3.9472194482296024,-4.35477018501742,-3.271933756973622,-1.9831596207310678,-0.38882987662494845,-0.015718871759757138,-1.270608833779738,-2.8160283315934973,-1.4558640881082576,5.610843181529529,16.031030118175746,22.75687720313116,17.42462188217639,3.8961512328907744,-11.9754712376681,-21.82283879039725,-23.86825821155607,-22.64367872355982,-20.025275959646187,-16.869836894199143,-13.386509266157859,-9.979480832267845,-6.602364241461767,-3.3784682209567842,-0.5937586972620624,1.799988658999181,3.710228461223364,5.250801194168136,6.479023388197871,7.471495882052755,8.163147053931366,8.543908761503317,8.633073725928268,8.459143361067936,7.996043099097125,7.302392267840896,6.3010880915536065,4.961119054986448,3.283172397206769,1.292624575239492,-0.9306411707545458,-3.1766547450980314,-5.135912596215644,-6.330640339871142,-5.889513491133627,-2.2475204447483543,6.945126703433233]},{"z0":[0,0,-2.356194490192345,0,0,0],"target":[0,0],"dt":0.04,"controls":[15.003422319110694,-13.39342924103164,-17.1175437777801,-20.43029288373455,-14.205281608243236,-3.1348997712217894,7.518325552083711,19.46586429961375,24.497413589239326,27.95198417859848,27.971991723247903,27.97198715622923,27.97199197091349,24.10346263573676,20.23752413942812,-3.3134812140514804,-14.521895740329594,-21.243105814704446,-26.01942002052551,-26.178010078378072,-26.212998982678872,-25.651828343101137,-24.911139271278135,-24.43659773481924,-22.900007986518062,-21.192497672433706,-18.025197844312864,-11.554428060806892,-4.374184021011317,4.13217322808332,6.237302495960199,6.353497315575503,5.899023654258952,7.3169052418195974,8.60347399852465,9.290132785195789,9.802629725777116,10.515151900035336,11.323464583252026,11.577992144034436,11.958204134042013,13.171501204370978,13.28842801685621,13.150523356009874,11.495498999561581,9.548683351388535,8.124531957322779,3.0582128290617834,-0.719811218623327,-3.2329542031573686,-5.52395299963835,-7.7625923526026614,-9.397296103159498,-10.511513986235633,-11.030479820162862,-10.744526064366584,-9.738089162222296,-7.664984361413748,-4.369227259260294,-0.6249573788867797,3.5850378780791523,6.913316068731941,9.3173977418322,9.068031686763218,3.6131312763322048,-9.901587236808515]},{"z0":[0,0,-0.7853981633974483,0,0,0],"target":[-6.283185307179586,0],"dt":0.04,"controls":[27.044491896317137,26.662226572074943,3.711111925011708,-26.59662426080694,-26.9317094061938,-27.03806250755594,-27.97092682309689,-26.47431851822903,-25.13903792895115,-23.724982102227344,-16.80060911868877,-7.311245681652362,-1.682026447563342,2.22469423308497,5.772507783529,10.250873649342088,14.616467870869412,20.112888438523406,27.551531267441177,26.749108648458627,26.169065313734944,26.160448626352302,26.321534295071363,25.771311011167942,19.552378229676886,6.79549656081043,-13.87708888440838,-18.09328562642207,0.7795325855093828,10.402648836936546,17.61585840557278,9.619100395808223,5.190075502379415,1.6187169307144824,-1.227160731185013,-3.3446035577687563,-5.331387627956298,-7.046054154216427,-8.668482859114855,-10.476730248133794,-12.532491380613173,-15.365324259716616,-18.234272423875737,-18.373210701411633,-13.647678500887901,-6.889964170436226,-1.6590846768902814,1.567220390512077,3.1551572868282944,3.7909484414871697,3.857927875178627,3.6001424544945397,3.116697537668286,2.5205581433999447,1.7072810862819991,1.1976118965477196,0.8092696929956879,0.5641193744905865,0.37219019397932235,0.26445924745852506,0.3815808301540305,0.4288451023536594,0.32307447431434366,0.3263233735679836,0.3263296440814653,0.12407731760839859,-0.029230285178892614,-0.4272809002078732,-0.7770788018496537,-0.9661685066004023,-1.048941725558435,-1.0207189006911868,-0.8775609780189598,-0.6115152068627522,-0.2330334266853421,0.19771464795460647,0.5494625061989633,0.6843028365700342,0.4461648517397945,-0.5756309174779961]},{"z0":[0,-2.356194490192345,0,0,0,0],"target":[0,6.283185307179586],"dt":0.04,"controls":[0.785083397,1.164107829,1.879414424,2.6643088,3.042549707,2.521252602,0.900083813,-1.646175301,-4.6965182,-6.705492301,-4.229479152,-1.023000976,1.100392559,2.293530256,2.71774829,2.663224558,2.423863433,2.124379912,1.799315449,1.435990884,1.062582365,0.629097694,0.101641392,-0.583493844,-1.479575477,-2.567846895,-3.684013151,-4.522611793,-4.808342875,-4.479883898,-3.645312965,-2.481018846,-1.222037248,0.007536099,1.066427208,1.8716457,2.374419075,2.602288113,2.572314895,2.35814944,2.036215322,1.620381572,1.068353899,0.455646691,-0.125501411,-0.58273158,-0.756583879,-0.598088403,-0.127859361,0.505239284,1.116049668,1.467480594,1.432955283,0.972959722,0.210384235,-0.740905174,-1.8152167,-2.864085263,-3.79991835,-4.468910066,-4.665427299,-4.191945629,-3.027820534,-1.492493978,0.132890099,1.831362672,3.781181069,5.993730085,7.831777781,8.233856399,7.183308505,5.551393695,3.64319002,1.067044219,-1.876769968,-3.753574653,-4.171868642,-3.652338023,-2.571070769,-1.201897276,0.286664416,1.689518135,2.785669743,3.288033298,3.047070192,2.148589944,0.957729903,0.125558286,0.10950485,1.192920766,2.754513127,1.479518805,-10.606727629,-15.007432264,-15.159018016,-11.660955103,-7.085661395,-3.36938548,-0.559213348,0.284239479,3.294750497,6.026736353,9.14878686,12.545372934,15.950675669,21.612884056,11.956094043,0.596376377,-7.713523986,-11.21941145,-6.268848329,6.030928365,-0.715015041,-6.757518514,-9.727746687,-9.228758859,-10.77685303,-10.824739059,-12.598056618,-7.76320768,-2.006749831,2.451361137,8.361480981,10.213168093,19.329716142,15.863491675,16.113350236,-26.632801594]},{"z0":[0,-2.356194490192345,-0.7853981633974483,0,0,0],"target":[0,0],"dt":0.04,"controls":[1.687731097,1.156778452,0.653785581,0.105041198,-0.600272986,-1.548054612,-2.649337737,-3.334977707,-2.29915112,0.267771487,2.499809939,3.90243044,4.448696019,4.242882357,3.481034491,2.385957455,1.20045789,0.156565247,-0.611552529,-1.124469215,-1.51423424,-1.915362119,-2.359349085,-2.738614975,-2.890188935,-2.730612156,-2.299991134,-1.709747648,-1.082086007,-0.514089162,-0.056788688,0.288647191,0.550477407,0.758239324,0.927012995,1.056298473,1.136277026,1.155091214,1.103681374,0.978361599,0.782329656,0.528147947,0.240638205,-0.043059265,-0.280724726,-0.440817104,-0.521112223,-0.558434864,-0.618972437,-0.769344697,-1.040502892,-1.40902667,-1.811181372,-2.174275553,-2.441722603,-2.583945071,-2.595710206,-2.481727474,-2.238276226,-1.843888915,-1.267620118,-0.492549047,0.457563505,1.501673849,2.502664156,3.292242946,3.723626755,3.748266895,3.484377914,3.218332475,3.205323612,3.394332627,3.56075223,3.553920773,3.368999907,3.134079687,3.029219417,3.145100042,3.39144446,3.527806124,3.285376554,2.506116481,1.203238534,-0.486150341,-2.354040045,-4.112059847,-5.363743021,-5.727953392,-5.250167253,-4.837570535,-7.025847904,-8.424514037,-6.566051575,-1.523319918,5.57242513,12.280391488,12.638042053,9.561507561,5.549284902,0.98578362,-3.872931684,-8.678206228,-12.850664559,-15.407811645,-14.778333843,-9.530033788,-1.591622439,4.261176421,8.714789456,12.182556229,11.062762667,2.295956816,-9.234676535,-1.868885281,3.440384027,-14.798624825,-11.454453166,-11.110464249,-8.841235839,-0.86466823,6.430543329,8.495462293,5.513559095,3.943600931,8.050588282,9.686714316,6.023094868,-0.471365803]},{"z0":[0,-2.356194490192345,0.7853981633974483,0,0,0],"target":[-6.283185307179586,0],"dt":0.04,"controls":[2.040541125,0.767180553,-0.469028133,-1.598202311,-2.484530186,-2.933676254,-2.74197609,-1.826608354,-0.358233627,1.318418508,2.798723444,3.182765434,0.821289443,-0.936647762,-0.941706809,-0.21435715,0.949444684,2.41761654,3.933274621,5.158415359,6.040431504,6.690050182,2.797630793,-6.510294834,-8.059337578,-6.436736243,-4.147533286,-1.953776149,-0.333130657,0.412296128,0.27380401,-0.629165367,-2.241257613,-4.46149439,-6.856201506,-7.790052535,-3.159067867,2.555973027,5.993734506,8.008642499,8.644908571,8.15891545,6.80575353,4.777016054,2.474558281,0.502690267,-0.709948978,-1.166206136,-1.20741881,-1.306522631,-1.852902633,-2.859476163,-3.883624653,-4.46323577,-4.433715613,-3.816451784,-2.682244542,-1.158803066,0.522406045,2.107725737,3.42382071,4.338634427,4.691264158,4.325767712,3.330326396,2.207611099,1.445047005,1.019056615,0.514622542,-0.589534752,-2.685200842,-5.637872325,-8.437419508,-9.816630393,-9.333821392,-7.283153196,-4.026401895,0.888233518,5.7979141,6.759771007,5.486630355,3.637398153,1.730445339,-0.084570394,-1.754528854,-3.184754031,-4.13950157,-4.248726816,-3.21874553,-1.047964714,1.966124136,5.286233247,7.672901937,7.565446662,6.939124209,4.476819223,1.84297454,0.102093439,-0.741512139,-1.049368731,-1.116155532,-1.03669792,-0.718006502,-0.541012276,-0.638563887,-0.187246233,0.371641854,0.564794233,-0.198935923,-2.317414666,-5.361860365,-8.130246865,-9.416644014,-6.073542612,-1.915192242,1.347218105,3.606893708,5.261389421,6.453223342,7.197084237,7.50449025,7.328397762,6.574250746,4.943304883,2.307898185,-1.776494027,-8.946517937,-16.785287825]},{"z0":[0,-0.7853981633974483,-2.356194490192345,0,0,0],"target":[-6.283185307179586,0],"dt":0.04,"controls":[6.166309777,3.423214169,0.637677162,-1.940198249,-4.11709905,-5.721226759,-6.583992122,-6.563430854,-5.577782914,-3.251051781,1.279784913,5.549860226,8.811906607,12.207984685,13.362649692,9.415754328,5.129045505,1.345388315,-1.004409471,-1.0154651,1.249200977,4.685124464,7.898357756,8.86558538,0.355747468,-14.642782642,-14.947968088,-14.531890521,-13.839728252,-13.010021814,-12.042262999,-10.988146323,-9.940664022,-9.03024918,-8.364054264,-7.476728368,-2.254905953,7.609235622,11.743295456,13.166069792,14.879303799,18.100864673,22.240924697,24.261313495,22.077504311,5.198884674,-11.396864713,-13.921715914,-13.265471816,-10.466770687,-6.343953456,-2.164358781,3.640928412,8.425539886,4.885691813,-0.277471099,-5.322633669,-10.885882634,-13.72536377,-10.478720606,-6.316777873,-5.239611537,-4.718461177,1.547877886,8.282203615,9.257568013,5.426660772,1.032962251,-0.110437286,2.447858866,9.577569267,8.812377365,4.147007449,-1.52351497,-6.134159545,-7.271795527,-4.170673769,0.499821179,8.589940094,10.341440859,3.048638101,-3.430569912,-6.694708897,-6.922444594,-4.977991881,0.000756566,2.617516306,2.602695731,1.743794617,-0.646004342,-1.766249415,-1.363299096,-0.394345911,0.813311037,0.385833166,0.076351431,0.099634192,0.287064349,1.105305792,1.378808109,0.991517113,-0.477315572,-3.251185828,-3.316156998,-1.798881723,1.82361902,5.639963452,6.495431005,0.304183112,-2.934142376,-1.833745651,-1.623633174,0.842521067,6.789699558,-2.815114811,-20.406734946,-17.564071935,-26.976666322,-0.681408956,10.280490667,26.943226212,14.630321894,12.459335373,14.743823426,11.56114032,3.458867229,-11.328629779,-25.917822647]},{"z0":[0,-0.7853981633974483,2.356194490192345,0,0,0],"target":[-6.283185307179586,0],"dt":0.04,"controls":[3.13465428,1.133538406,-0.635457538,-2.053263771,-3.016403811,-3.410217089,-3.124020756,-2.113484831,-0.441071014,1.842141733,4.84217094,7.109346363,5.606963105,3.57373038,1.42615407,-0.551359788,-1.933895622,-2.526255193,-2.537575913,-2.264611561,-1.885911486,-1.4878818,-1.129134923,-0.882731291,-0.85163048,-1.05048856,-0.952882698,-0.221208043,0.490733059,0.901969761,1.192945648,1.590651127,1.118984618,0.684118652,0.647985195,0.025296236,-1.502143028,-2.087932206,-1.481728948,-0.349754861,0.96476881,2.31657022,3.608888976,4.695379737,5.298374055,4.99466026,3.407549009,0.56331949,-3.108434372,-6.826371496,-8.266927741,-7.349063165,-6.124871069,-3.659376104,-1.544378603,-0.505423743,-0.114497497,0.4578455,3.356456515,4.175640987,3.315635381,1.91424159,-0.849258756,-2.498114848,-2.450182738,-1.337122824,0.719141738,-0.008833367,-0.185403873,0.91887494,3.101068107,4.298472467,4.123953081,2.649156561,0.591485532,-1.448535867,-2.964664682,-1.772613168,0.591905663,0.999201291,0.632460751,-0.725911757,-0.781974696,-0.426615035,-0.005737221,0.768176209,0.143652003,-0.146191388,-0.188578462,-0.289561177,-0.823456394,-1.621990672,-1.411877211,0.113408329,1.94033012,5.538836626,3.194671844,0.293590176,-1.22896709,-1.425904707,-0.95872093,-0.219386408,0.55850809,1.203006712,1.569443226,1.50752868,1.009570642,0.287891202,-0.443742477,-1.093237037,-1.646558306,-2.092049584,-2.397343595,-3.067678424,-4.682032368,-5.360272685,-3.700910362,-2.462447044,-11.630550029,14.888462619,-8.465065291,-4.587359674,1.561698165,5.507066841,6.114296395,27.029284375,12.332083509,-27.188956978]},{"z0":[0,-1.5707963267948966,-1.5707963267948966,0,0,0],"target":[0,0],"dt":0.04,"controls":[-6.688631272,-5.99995308,-4.009248541,-1.014140621,1.808186132,3.570746379,4.231530891,3.860881608,2.587704437,1.431889914,2.202126821,3.980703324,5.08898691,5.168390674,4.400005959,3.154351928,1.765326598,0.471047516,-0.565031282,-1.254870907,-1.612011271,-1.752611691,-1.842361028,-2.012772629,-2.294254586,-2.610767121,-2.845580186,-2.923252744,-2.845132473,-2.66699246,-2.44071798,-2.172802161,-1.840286437,-1.428345757,-0.95072191,-0.448630073,0.023553821,0.414775032,0.688746526,0.828325104,0.834371067,0.722397485,0.519993332,0.265833282,0.008053228,-0.20187838,-0.322029943,-0.336963574,-0.270514821,-0.183488606,-0.14968657,-0.219946579,-0.401092446,-0.662618144,-0.955850675,-1.230082415,-1.44167146,-1.55608621,-1.544285132,-1.378130153,-1.030964387,-0.486346581,0.247346595,1.122611076,2.045896851,2.884782511,3.49566371,3.773289184,3.706546816,3.40811883,3.063299565,2.780009678,2.544028406,2.328221462,2.158536242,2.097174681,2.187459703,2.399694935,2.615691963,2.664827169,2.390257205,1.705419822,0.612046293,-0.809412599,-2.402860264,-3.925123976,-5.077533344,-5.702742072,-6.158599631,-7.424052395,-9.627973579,-9.930598761,-6.292702163,0.944067947,8.311734838,10.527511236,10.452282744,9.933440943,8.811929862,7.073560211,4.767550915,1.946152619,-1.330747564,-4.970172586,-8.788488134,-12.395269019,-14.941066311,-14.380079791,-7.250774338,2.905523316,8.860762161,11.469746391,9.592716444,0.949129999,-10.568677437,-6.679760476,-1.62734437,-4.39683779,-9.190437732,-10.693802671,-8.513776633,-3.745386169,1.478036583,5.163900328,6.344354692,9.17147666,10.653221343,13.799071606]},{"z0":[0,-1.5707963267948966,1.5707963267948966,0,0,0],"target":[0,6.283185307179586],"dt":0.04,"controls":[-2.310651148,-1.657422463,-0.593832602,0.725347618,2.167373554,3.469891414,4.185990495,4.093437101,3.5779229,3.187928478,1.738372713,-1.719626239,-2.674410914,-2.762137411,-2.508795313,-1.967971718,-1.321956383,-0.913198934,-0.825153525,-0.961063726,-1.251302781,-1.69461923,-2.419349864,-3.348366075,-2.352369828,-1.400287572,-0.463870457,0.605631046,1.792295115,3.057091146,3.183996018,-0.461527816,-2.585105929,-2.641550892,-2.270151362,-1.808114542,-1.338519599,-0.852423926,-0.308835067,0.341722692,1.143636466,2.128905495,3.322663216,4.735749737,6.274189223,7.327361111,6.059953946,4.798074854,3.231667499,1.55236978,-0.093475631,-1.537244225,-2.710473366,-3.652250726,-4.476220504,-5.317229491,-6.282735088,-7.419560927,-8.690070495,-9.909753165,-10.434351675,-8.747854451,-2.297811589,-1.571563098,2.369418964,4.898858437,7.009740551,9.433971296,12.131733557,13.249175006,11.636113917,8.335234679,4.893190459,2.283120409,0.639632656,-0.372039993,-1.113386405,-1.811457678,-2.584276995,-3.473125632,-4.376171597,-4.693132259,-2.374141262,2.159127973,1.071487969,-2.075122056,-4.548873702,-6.123453088,-6.870876112,-6.112354949,-3.111770853,-0.254868188,2.28105498,4.640704523,6.440948829,7.483989758,7.812675525,7.413726703,6.181727212,4.251021333,2.153202845,0.388980118,-1.047412574,-2.34353089,-3.625526734,-4.950995654,-6.292864379,-7.524570301,-8.381261356,-7.796314231,-3.605618297,1.712032154,5.612492888,7.687447628,6.129137654,-1.030736552,-6.291150031,5.646104262,-7.096670474,-5.475903451,-26.98349884,-20.285123309,-9.927101901,-1.710592797,0.06818139,26.930004861,26.893849529,10.277465533]},{"z0":[0,-1.5707963267948966,0,0,0,0],"target":[0,6.283185307179586],"dt":0.04,"controls":[0.681392538,-0.824151291,2.207314352,1.643015501,1.552902513,2.186467433,3.374797826,4.420679199,4.521845095,3.885130127,-8.30812756,-4.819635214,-0.346657138,3.678208724,11.27754666,0.585408382,4.297176532,7.787555765,8.816133324,-12.744667327,0.533347958,-0.667179254,-3.375460983,-7.163907448,-11.476055172,-13.427039851,-4.195217129,-5.571680161,-8.328387989,-6.814283622,-7.464666639,14.623798672,2.202494425,10.524405356,2.233460654,-11.016924605,-19.271344188,10.463832512,8.723782806,-18.857250538,-15.299827863,22.135387426,7.881067108,0.524476659,10.507004552,-9.673270317,-6.673054046,-3.103414333,7.511175425,11.032372366,25.306666004,12.757232099,11.426813977,-9.166955039,-6.693194328,15.55700692,-12.545728696,-12.440199785,-13.969526027,-14.562034676,-16.627944286,-20.690861955,-1.083584643,2.437488057,7.386360111,12.878697188,14.88327835,14.599132164,12.13398443,11.831185713,10.15386347,7.157029092,4.723608592,4.341914079,-0.748420866,4.029917316,8.085532908,-14.928094898,-3.907450206,-8.104154732,1.268542981,-7.849602299,-5.988948763,-8.104643907,-6.988590672,-2.10731845,-13.312446563,6.965838142,5.928140661,2.787040707,3.856010833,-16.955696063,-17.371020698,-17.0731497,-20.208201401,-19.758921394,21.648656719,26.962618061,26.944975175,24.781610776,23.529881548,12.699288834,4.212665532,-10.594499457,-19.607573793,-14.602395148,-16.333320921,-5.610078324,-3.391998283,-10.935000755,0.81633943,0.280742108,1.106353041,23.237713624,0.923812099,-7.164360145,4.179493201,26.905750212,-15.061290344,-27.257217905,-27.273340026,-27.260456073,10.16451169,11.825777769,-18.298356701,20.497568346,25.615114952,17.35849091]},{"z0":[0,0,-1.5707963267948966,0,0,0],"target":[0,-6.283185307179586],"dt":0.04,"controls":[-0.27345966,0.085227428,0.484050763,0.816296472,1.032937153,1.07030408,0.857864287,0.410489351,-0.081479562,-0.443809226,-0.70392467,-0.938577287,-1.173829334,-1.367308758,-1.338236209,-0.596209988,0.991999636,0.944315185,0.358142742,0.157899715,-0.168712642,-0.609748559,0.06115919,-0.386810951,-1.776105519,-3.209053854,-2.183098055,1.107654007,2.876004874,3.78798305,4.171525635,3.861721127,2.138092231,-1.34756133,-3.659434294,-4.218512619,-3.364178423,-2.291651076,-0.433478283,3.410640716,4.895205405,4.23148327,3.689644773,0.235016745,-2.252025931,-5.146773236,-7.113144971,-4.149017682,-2.635045762,0.375964474,3.61423721,4.94709257,4.080535452,2.343154575,-0.024179779,-2.761818,-3.302063808,-3.584006477,-3.523534513,-2.251889626,-1.448640172,-1.21918946,-1.325932123,-2.058289681,-1.978482135,-0.625312074,2.207832611,5.296745914,7.679122516,9.527408625,10.536566811,8.354007961,5.105024772,0.431171152,-0.512394231,-1.592713952,-2.646255914,-2.889386848,-2.94897692,-1.019868199,-2.28903181,-1.360068438,0.612216262,-0.857218275,-0.399386457,0.090101012,0.786743857,-0.979938621,-0.324301875,1.885536149,1.808502912,0.204344957,2.677568745,5.398008871,6.496041121,6.859715717,-0.637600515,-7.089594255,-12.134499725,-21.23631185,-24.541797143,-19.5531992,-0.916182809,9.816672102,7.07435011,-8.356371024,-21.60659375,-26.982957935,-2.430175138,24.824975361,27.041409395,26.979081233,9.615055671,13.247827537,21.820461862,19.270019563,11.601641896,26.930600032,-26.171287239,-27.098540928,-27.131149477,-27.150847504,-27.159368354,-27.160240955,-10.884227991,26.897224665,26.940172262,26.971609043]},{"z0":[0,-1.5707963267948966,-0.7853981633974483,0,0,0],"target":[0,0],"dt":0.04,"controls":[-1.178561658,-1.552817863,-1.504699832,-1.177162494,-0.569607447,0.43021301,1.584403036,1.92414201,0.499101477,-1.718265921,-0.073976858,4.11650386,6.603191163,7.020016868,5.914099959,4.131432798,2.254984338,0.567901275,-0.771600266,-1.636691129,-1.964261694,-1.844954461,-1.541848173,-1.385191111,-1.608537033,-2.21199391,-2.957052763,-3.54219293,-3.80314959,-3.772567642,-3.588910252,-3.331736402,-2.972434617,-2.462790211,-1.803815276,-1.054627558,-0.305611345,0.354081388,0.85835478,1.173429815,1.297311833,1.25298321,1.079726715,0.826529808,0.548568052,0.303749996,0.144515881,0.103344885,0.176401522,0.314268446,0.432378269,0.448565123,0.322383699,0.062690236,-0.286913373,-0.665989093,-1.013194618,-1.277395957,-1.419744681,-1.407886928,-1.210817808,-0.802839948,-0.178000903,0.631107705,1.540133359,2.414455591,3.092032447,3.431750566,3.379827547,3.026336442,2.61023223,2.369334177,2.322799838,2.360993788,2.414299636,2.480811332,2.599849451,2.810214108,3.09294592,3.335378836,3.352421819,2.95589738,2.030216321,0.569623852,-1.330561694,-3.487711299,-5.615936964,-7.318579518,-8.227941337,-8.362078191,-8.39497597,-8.833140836,-7.531143238,-3.164331644,2.939704957,7.836212565,9.629070556,9.293798034,7.721367752,5.335591501,2.380724836,-0.866693115,-3.903283141,-6.024759158,-6.884189948,-6.865265981,-6.38528943,-5.336509137,-3.162604763,0.764429581,6.216179594,10.70795221,9.578504105,0.877515754,-8.14654578,0.579905259,6.465583901,1.05955045,-9.194902934,-14.84761747,-15.010164162,-11.478407523,-6.757279751,-0.248829749,3.420720538,8.713627804,14.363264605,20.526984402]},{"z0":[0,-0.7853981633974483,-1.5707963267948966,0,0,0],"target":[0,0],"dt":0.04,"controls":[1.15525433,0.538962527,-0.082197672,-0.659861345,-1.088410057,-1.158542369,-0.490597179,1.263282142,3.147430895,3.498743382,2.7870837,1.895738021,1.286534055,0.944311208,-0.323272727,-2.427317296,-4.517080548,-5.625049006,-4.416494228,-1.537583366,0.348564411,0.907061536,0.826336173,0.533597285,0.226841015,-0.004827444,-0.125858082,-0.132620347,-0.044971826,0.099707501,0.257594281,0.396597291,0.504762434,0.543917498,0.311143188,-0.619230637,-0.688152498,1.178329415,2.247349555,2.799761051,2.81228575,0.346213284,-1.615854075,-1.158646168,-0.46281048,-0.10177187,0.04085026,0.21735793,0.56378581,0.994745755,1.283491732,1.190826243,0.64628415,-0.115698915,-0.825307295,-1.270160765,-1.49545191,-1.584037847,-1.609753802,-1.616844086,-1.592196285,-1.641165166,-1.645980805,-1.603848666,-1.531257813,-1.490787846,-1.597846355,-1.869640695,-2.156132918,-2.166170179,-1.667008477,-0.668224071,0.642928642,1.782698477,2.826669417,5.324868412,6.834875163,5.924220575,4.092885937,1.268801405,-2.283344915,-5.09051876,-1.670351927,1.895428077,1.598000745,0.414325582,-0.711616871,-1.35256901,-1.849774654,-2.042582901,-1.969759084,-2.33151878,-2.51953952,-3.074748896,-3.956400191,-4.486254252,-3.680486163,-0.761477122,7.524792018,4.581874475,0.788645264,-0.324463019,-1.8126045,-1.085085896,5.566332675,5.20266676,24.021081712,20.940559849,6.135258013,2.962912358,-1.820553386,-6.827034592,-6.239925556,-26.893017119,-21.717247018,-1.26263483,4.02458943,2.953704175,2.03720467,8.642345243,20.075969286,-9.342319812,4.808521962,-13.522507641,-0.439462297,-2.207487265,-26.672597696,24.70969761]},{"z0":[0,-0.7853981633974483,1.5707963267948966,0,0,0],"target":[0,6.283185307179586],"dt":0.04,"controls":[3.334082974,1.965468428,0.388278011,-1.202373903,-2.500173439,-3.151589411,-2.990277074,-2.166617428,-0.745627552,1.75670173,5.291478559,7.332547612,6.770765441,7.027089023,3.128737491,-1.530385575,-5.654336744,-8.037192401,-8.470143487,-7.636535238,-5.072846503,0.333016925,2.282982352,1.510882759,0.243677238,-0.7525131,-0.911739779,-0.247967627,0.771308331,1.597668042,1.995252817,2.068071207,1.991122288,1.856189332,1.673638585,1.400820787,0.994550591,0.451454344,-0.199360103,-0.926948941,-1.671201847,-2.325952,-2.561610237,-1.33089255,2.980996364,6.919008127,6.43776646,3.875605189,0.88159188,-2.085189644,-4.529680924,-5.726728867,-6.678151464,-6.97157665,-6.335082093,-4.206287326,0.326087436,4.154467898,5.261210536,5.01983092,4.295906594,3.407336601,2.47646426,1.552891962,0.658690841,-0.193163397,-0.966143535,-1.590614508,-1.958641898,-2.050179568,-2.081161044,-2.329018787,-2.670684489,-1.840954447,2.731674039,3.965243457,4.000061651,2.991282278,1.485383124,0.300666641,-0.536531248,-1.317447546,-2.25693878,-2.443100464,-0.631405033,0.531692544,0.987495837,0.008225265,-3.229229482,-5.453470192,-5.141623066,3.172657756,8.713415172,9.201875598,9.158286673,6.270754738,0.0988969,-6.516144662,-9.545004721,-3.400708401,0.746801925,2.908824963,4.352367805,5.687578397,6.967640737,7.025777037,5.780143652,0.543842324,-16.368731521,-16.77596285,-11.356386506,-4.324918246,-0.136964527,2.306455735,3.74285801,3.317811772,3.362712314,1.339980993,-1.634881175,-11.551545009,-14.69341394,-11.89234127,-10.820739843,-5.970696281,0.726783917,-1.578379067,27.111969827,25.923252218]},{"z0":[0,-3.141592653589793,-0.7853981633974483,0,0,0],"target":[-6.283185307179586,0],"dt":0.04,"controls":[0.861111045,1.254667015,1.274895875,0.911902995,0.186946513,-0.861775511,-2.180450968,-3.562526719,-3.656927463,-1.165302196,0.735479443,1.636092972,2.050131605,2.179225596,2.119619353,1.95313573,1.746491693,1.529755144,1.283633422,0.929630224,0.30680617,-0.769621519,-1.85568226,-2.178587909,-2.080094398,-1.8823277,-1.667378677,-1.429426121,-1.114819121,-0.61281945,0.159595645,0.790948156,0.725273399,0.468992976,0.355447225,0.383069735,0.483016443,0.561763791,0.441697103,-0.233461024,-1.647213291,-2.782114876,-3.029421538,-2.893932567,-2.693579777,-2.501552488,-2.291188793,-1.922410972,-0.923981389,1.591687348,4.707948276,5.602209515,5.308370037,4.71340598,4.125696204,3.688308963,3.411651595,3.180278236,2.895915537,2.619202109,2.502813154,2.606361972,2.814430109,2.800182834,1.53555441,-0.156745938,-8.055221879,-8.832086998,-8.926737235,-8.70547098,-7.918423936,-5.125439137,-1.989192805,0.358254098,1.670124994,2.157805573,2.029630568,1.409153342,0.365160445,-1.02043203,-2.549575653,-3.854427543,-4.503203189,-4.19112255,-2.851771333,-0.738297547,1.449198367,2.749838115,2.822952729,2.248532266,1.796950025,2.496578715,4.292494934,4.470676205,2.540416055,-0.491606539,-3.338990356,-4.635286441,-4.241599615,-2.806899921,-0.762253696,1.566332728,3.760385569,5.324138331,6.030234106,6.088549509,5.74143814,4.897472455,3.029548762,-0.527363634,-5.623447562,-9.940060197,-9.2170122,-1.704055721,6.836164165,-0.013177194,-4.806763023,-0.450385269,8.559515834,14.079446266,13.779358584,10.702864806,6.37640277,1.654515328,-4.790980415,-7.350457448,-12.53632741,-22.126088132]},{"z0":[0,-2.356194490192345,-1.5707963267948966,0,0,0],"target":[0,0],"dt":0.04,"controls":[0.022116964,0.201221325,0.225518914,0.119521241,-0.087496097,-0.321945378,-0.413690444,-0.108431306,0.690183652,1.675158065,2.443163562,2.777225486,2.628413165,2.074921941,1.275046044,0.406876908,-0.387954375,-1.037818965,-1.537852489,-1.915974296,-2.19248218,-2.358464509,-2.384756963,-2.251570883,-1.972890186,-1.598077527,-1.194868495,-0.825932259,-0.526903227,-0.2944226,-0.093853652,0.116830234,0.364067663,0.648759898,0.949420085,1.232722858,1.465438296,1.623057106,1.692299237,1.668131174,1.549358184,1.337499697,1.040593083,0.679059888,0.28795603,-0.088830315,-0.41205397,-0.662812359,-0.852497819,-1.020299259,-1.216158754,-1.474141069,-1.791740417,-2.131131335,-2.438553403,-2.665537308,-2.781716806,-2.776424581,-2.649825613,-2.399162628,-2.010012915,-1.460407655,-0.737775967,0.139315056,1.105754413,2.049662599,2.832514508,3.331776622,3.498542029,3.404003663,3.236483191,3.191945675,3.300970736,3.433222946,3.458350238,3.35027544,3.18807061,3.08418319,3.086896409,3.124988529,3.031107385,2.623133674,1.788693778,0.521575076,-1.090770467,-2.8816357,-4.592653645,-5.88213247,-6.486615297,-6.608950057,-7.187398261,-8.650702156,-8.864703754,-5.879471241,0.24605932,6.577686038,9.398530846,9.728171262,9.352326056,8.490692482,7.233300872,5.632718038,3.725072375,1.53421191,-0.92836825,-3.642679057,-6.541111065,-9.440365377,-11.934550912,-13.135229563,-10.860026872,-2.725938327,5.824236149,9.698534391,9.161192328,10.293749709,-4.261791409,-5.991305959,4.809266813,-21.105700067,-27.025480654,-25.621420462,-6.042483839,8.31741345,9.059222278,1.590324874,26.982743929,24.824514961]},{"z0":[0,-2.356194490192345,1.5707963267948966,0,0,0],"target":[-6.283185307179586,0],"dt":0.04,"controls":[-1.452880218,-1.458943828,-1.439004791,-1.237701416,-0.840961558,-0.54689204,-1.191176527,-2.80611276,0.639745773,3.734469888,3.870406273,3.013824366,1.959293782,1.042660265,0.431217554,0.186908097,0.272820897,0.569121584,0.899968183,1.06367718,0.895915267,0.358008137,-0.439420228,-1.204541969,-0.694435521,4.357605924,2.966378771,2.981331926,2.181560111,0.988455468,-0.345629814,-1.756602366,-3.184667307,-4.540056934,-5.788732541,-6.943821701,-6.648775869,-1.138186233,1.928560632,1.878313482,1.023637528,-0.047022058,-1.125117859,-2.108316673,-2.894008098,-3.36021301,-3.398211117,-2.867518132,-1.647661329,0.184058774,2.287745523,4.243130133,5.656716914,5.354877525,4.551800585,4.221306537,3.3786197,2.319479564,1.360301621,0.899674047,1.066584594,1.768925638,2.827036883,4.020953347,5.063029193,5.572075486,5.303677899,4.404799443,2.986915864,0.903062262,-2.275241401,-7.071986613,-13.174183649,-18.1834386,-19.275075773,-15.469919436,-7.846452244,-3.532316105,-1.541387339,1.708067679,5.750834142,9.559187165,9.6602418,5.402398267,0.151127306,-4.210126318,-8.19699587,-10.612748635,-6.296562449,1.961014912,6.971621841,9.523129037,15.142123736,19.724476732,23.372603763,19.476029766,12.524848872,5.840381648,0.410393728,-3.657334151,-6.706525048,-8.712857288,-9.271295327,-8.477280161,-6.930969502,-5.122365262,-3.643861635,-5.257150935,-15.456074311,-15.502337624,-8.749843984,-1.026863932,4.293789108,6.58993987,6.176577543,3.737790356,0.622435176,2.911550801,-2.555727452,-9.804444925,-14.474545934,-7.418234243,-14.991365909,-4.661120318,4.05754861,-1.515686566,24.167284635,27.374928522]},{"z0":[0,-1.5707963267948966,-2.356194490192345,0,0,0],"target":[0,0],"dt":0.04,"controls":[-6.104678912,-5.321254331,-4.344891757,-2.780382851,-0.147891098,3.345437737,5.350081459,4.910474519,3.593885843,2.116688986,0.77803618,0.134023709,1.067715743,2.434668358,3.026338714,2.915026331,2.461242996,1.931701364,1.451368887,1.041959094,0.675263443,0.31955729,-0.027411266,-0.327768161,-0.530250743,-0.63500149,-0.747511925,-1.054800753,-1.788596104,-3.372686056,-4.521366804,-4.298401267,-3.51283853,-2.426511668,-1.213723752,-0.057515458,0.884434669,1.51527323,1.802256696,1.757023065,1.412501675,0.80936137,-0.003483026,-0.955681061,-1.934800957,-2.762087809,-3.147300175,-2.551778765,-0.653788805,0.622548917,1.148584184,1.340368163,1.333801431,1.190287362,0.864987819,0.212692955,-0.91049953,-2.401399259,-3.496570817,-3.474683512,-2.833084446,-2.026170961,-1.22794863,-0.474323721,0.372802611,1.7924494,4.031628723,6.049488288,7.085397404,7.175001304,6.457741366,4.603792808,1.550890082,-0.562748617,-1.412593851,-1.623557176,-1.492701581,-1.115069212,-0.526855146,0.232554934,1.081845565,1.841603443,2.164654542,1.615845916,-0.004554515,-2.457663341,-5.270539758,-8.043961921,-9.956654474,-7.258938012,-3.9894961,-1.411057656,0.709772268,2.36657777,3.392101939,3.681698538,3.334935188,2.622027749,1.826576117,1.124095708,0.574217796,0.162149554,-0.173193747,-0.517193728,-0.918532938,-1.288311599,-1.372495287,-0.810722613,0.663949976,2.758590575,4.610860546,5.938149558,6.032046568,-1.33355955,1.924608279,-0.151118326,0.802604975,-2.226314965,-6.26682869,-7.991495134,-7.66062083,-7.727027554,-4.422540654,4.827796525,-13.641302168,0.454600667,15.145318909,12.238866179]},{"z0":[0,-1.5707963267948966,2.356194490192345,0,0,0],"target":[-6.283185307179586,0],"dt":0.04,"controls":[1.242576853,-0.085711835,-1.230968825,-2.091935166,-2.634132286,-2.803478015,-2.234313411,0.443318784,4.243834619,4.031194131,3.521985324,2.906718733,1.999110949,1.087116982,0.4919914,0.351885661,0.63013304,1.183755031,1.777320444,1.954083715,0.820651691,-0.687810742,-0.665967443,-0.498658424,-0.690953982,-1.073588049,-1.457754588,-1.851350382,-2.524455482,-4.25326933,-6.160926172,-5.816745673,-4.845118442,-3.694920041,-2.249424837,-0.708840809,0.026516759,0.062538234,-0.135806483,-0.53320081,-6.712013839,2.758230551,2.26992295,1.276511036,1.118756169,1.9427249,3.337417539,5.047788518,6.801599004,8.253163207,9.383766885,5.35437507,5.118156277,2.99302016,0.659073648,-1.702751581,-2.990643401,-2.695189374,-1.125347691,1.084236673,3.436995348,5.596411392,7.298331348,8.134005423,7.487091997,5.628213304,3.477479129,0.930565703,-2.604459486,-7.426458959,-10.668816838,-8.953580155,-4.440409417,-0.17660157,3.25209382,13.418675072,8.981323377,9.647956882,9.893684418,7.778870603,3.848466615,-0.997098328,-6.288455408,-12.291947267,-19.679406089,-26.992041352,-26.257731576,-12.377964722,-3.251489368,4.062739446,9.365089511,12.093608454,9.973227545,-3.190478961,-26.986929401,-26.983957557,-26.985071359,-13.348681322,-5.037295557,-26.99079106,-26.988493697,4.374688253,6.703173988,11.019322073,14.197683517,17.21764253,19.695229978,21.061016544,19.55643348,10.089298026,-2.721391135,-6.442483854,-6.698039259,3.67318661,16.096654208,10.924866503,3.369538942,7.918598647,9.636254193,13.086557855,13.74433895,5.732025896,0.182721252,-10.510057687,2.565543493,-11.615312705,-11.38256812,-16.879683775]},{"z0":[0,-0.7853981633974483,-3.141592653589793,0,0,0],"target":[-6.283185307179586,-6.283185307179586],"dt":0.04,"controls":[7.255747042,3.972594862,0.936610451,-1.626144184,-3.549285377,-4.777628116,-5.368205425,-5.2848991,-3.520606013,3.621042898,7.729092403,7.023317254,5.6713591,4.14813522,2.987948984,2.067729682,0.303524567,-2.849525443,-3.691863498,-3.709319302,-3.438674994,-3.157524061,-2.867988368,-2.557302846,-2.235804914,-1.885514329,-1.60676445,-1.691352425,-2.505838145,-0.668518678,0.719131444,1.470990911,1.774573731,1.547780081,0.657420025,-0.635161914,-2.021229412,-3.378198424,-4.60586192,-5.383711421,-4.587979415,-1.07289111,1.71977908,3.20625634,4.355956029,5.239556549,5.613857564,5.198196843,3.915557265,2.592919297,1.80802237,1.375833071,1.164186341,1.128557835,1.247055769,1.531451283,2.10140567,3.087130789,3.750153046,3.375219927,2.531980709,1.680901314,0.926632681,-0.038121887,-2.090030371,-4.842641866,-5.921670669,-5.780200077,-5.282105258,-4.789362028,-4.496417888,-4.524142547,-4.781191035,-4.859271819,-4.539098636,-4.147707159,-3.99022818,-3.944869292,-2.419594092,0.156275452,-0.054948645,-0.783429899,-1.134472152,-0.455366271,1.561643342,4.519891543,7.362000389,9.136116351,9.254727244,6.790747248,6.286585274,6.443729713,4.671702417,0.571170103,-3.745203924,-6.44109754,-7.40534486,-7.130063906,-5.989005607,-4.212541107,-2.008488722,0.382200452,2.710209337,4.755834175,6.321177876,7.147594701,6.662731451,4.181161712,-0.409140112,-5.69057486,-8.623636502,-5.321996996,4.51239471,12.610492472,1.762369217,-26.995495137,-3.600994296,7.452360495,14.956809048,15.900463185,11.626882883,5.616889135,0.567076212,-0.636675767,-3.061386352,-2.307558081,-17.475287801,-14.751681482]},{"z0":[0,-0.7853981633974483,0,0,0,0],"target":[-6.283185307179586,0],"dt":0.04,"controls":[1.476976771,0.465054511,-0.335675134,-1.060359726,-1.710930229,-2.077301607,-1.714268473,-0.070098119,2.890416029,5.65425068,5.698071024,2.900202889,-0.445656693,-2.082452396,-0.719892983,-0.271569375,-0.878567103,-1.75471553,-2.128081961,-1.932458271,-1.48909355,-1.084772518,-0.85154329,-0.7883772,-0.821545613,-0.860111125,-0.835425857,-0.727356258,-0.5675415,-0.404649288,-0.252269468,-0.059580462,0.279072447,0.865731726,1.677816049,2.350916569,1.532932828,-1.027376654,-0.211047719,0.629367808,1.159652173,1.595238724,1.96912689,0.283515776,-1.838142598,-2.151296666,-1.970600342,-1.305410202,0.444798648,2.078963999,2.702649796,2.506751017,0.342538468,-2.607158559,-2.096736447,-0.651536948,0.82480858,1.497519598,1.169411484,-0.191749776,-0.082331302,-1.035035485,-2.008176163,-2.258557137,-1.348660629,-0.088869214,1.156049818,2.278538703,1.990504389,2.113994115,2.441537736,2.133469044,2.23771558,2.097237725,1.11922313,0.94074041,-0.174791212,-1.866283165,-4.345777937,-6.487484788,-7.459083738,-9.875316202,-7.871136149,-3.907474766,-0.062056812,3.029548845,4.977355293,5.657759357,5.295952123,4.298884157,2.981381124,1.532526131,0.110522346,-1.036436255,-1.468678792,-1.427213173,-2.154247834,-3.176310715,-4.037871509,-4.305513526,-3.583755169,-1.794966913,-1.103711259,-0.589196435,1.719602431,4.667396643,5.28169925,5.625205111,6.144087673,5.517144795,4.758007419,4.782906834,5.850221611,5.095373955,2.557603144,1.981647164,1.276008248,-0.125001371,-1.663857745,-3.65085602,-4.557922306,-4.242484382,-7.96648924,-7.632498053,-6.737434052,-6.385861217,-0.459757749,12.300757424]},{"z0":[0,-0.7853981633974483,-0.7853981633974483,0,0,0],"target":[-6.283185307179586,0],"dt":0.04,"controls":[0.623535774,0.675392701,0.854854521,1.117229176,1.202748234,0.877912339,0.255677943,-0.355070657,-0.786174638,-1.124328489,-1.331956255,-0.563382622,1.627598372,1.812092926,0.628198694,-1.395488932,-3.517897377,-2.989449152,-0.634993706,0.393046363,0.623757525,0.574913657,0.451793664,0.344627578,0.302814822,0.35267015,0.498718347,0.721486989,0.97133591,1.151761021,1.090578305,0.547180618,-0.543083413,-1.64934557,-2.065106404,-1.760996025,-1.068677918,-0.265410508,0.532359954,1.250226038,1.858075433,2.386601625,2.514980779,2.604164736,1.489360042,-1.104548812,-2.882494628,-3.893325055,-4.357971156,-2.879763036,-0.910733226,0.363077921,1.60334127,2.381448747,2.339578608,1.936575915,0.609174035,-1.342540483,-3.751120775,-5.469076889,-6.360359657,-5.921931091,-2.439583407,2.409342517,5.516554289,7.074346998,7.053247061,0.160149622,-5.534543778,0.785218193,9.260149099,10.709194716,6.155188582,2.651701301,-0.442676586,-2.974990929,-4.526577027,-6.168681777,-6.59664807,-8.264031672,-7.480265209,-7.069232722,-4.66780083,5.609045258,3.577084554,5.854757124,-1.798929574,8.580525345,-4.483031109,-1.219052698,8.306898945,5.419914245,-3.025379295,-7.801405886,-9.023738085,-7.368685109,-3.893347308,-0.598317047,1.678977411,1.48579976,1.585259776,1.465326563,3.509468067,5.3642737,7.688044195,10.031094176,6.910833107,-1.146293619,-9.720412458,-10.485702221,-5.635189511,3.073065906,0.404791916,-6.903784274,-5.467586875,26.971501189,26.966843247,5.502864664,1.678554282,-7.06691161,-1.516480876,-1.426516681,-1.799231268,-6.900621385,-6.762672941,-8.891100409,-1.675750753,-3.308487052]},{"z0":[0,-0.7853981633974483,0.7853981633974483,0,0,0],"target":[0,6.283185307179586],"dt":0.04,"controls":[5.385056274,2.784707151,0.189781854,-2.29341867,-4.53968981,-6.263514728,-6.826504854,-5.215154728,-0.78481274,5.288085269,9.665347339,10.828536771,10.787830037,9.902192412,2.911020729,-5.661023839,-7.505122251,-7.233521112,-6.355619679,-5.27642193,-4.24743411,-3.395430905,-2.55277104,-1.378786671,0.303972743,2.369285672,4.525037412,6.234852958,4.780041205,1.820800843,-0.192850304,-1.449059491,-1.974650997,-1.952638262,-1.648060714,-1.214717676,-0.706352144,-0.148117042,0.429617456,0.988742513,1.487948751,1.873510044,2.047617722,1.858177815,1.203288148,0.160268136,-1.146187945,-2.751009261,-4.538730477,-5.662887809,-5.385842139,-4.179684278,-2.725367054,-1.230390577,0.048918695,0.823286141,1.107516822,1.0751182,0.873675529,0.587731572,0.258357471,-0.083320402,-0.36507257,-0.377708851,0.347301872,2.418517271,5.841914618,9.281004912,11.246885758,12.011858176,3.992578892,-8.592866386,-8.543371358,-4.189059398,0.890204616,1.560798323,-0.472119214,-4.782464492,-7.414960154,-5.976971664,-3.614807161,-0.396457512,2.503674061,3.213045514,2.848266256,0.401978586,-0.805832741,-0.599806115,-1.704352042,-3.426183909,-2.3311529,1.038946817,9.36642567,18.002617524,12.231186557,4.772410062,0.395355882,1.148207544,3.828435081,4.173829851,1.513031857,-2.157666143,-3.802842233,-1.731623925,4.067726568,6.436627483,4.507065946,-1.406909518,-13.330862604,-27.036689198,-27.027333371,-9.167844135,3.033732146,9.368121672,5.803046799,1.745778995,-1.131875346,-3.059075883,-4.053673672,-5.370503788,-12.661190891,-27.021560789,-22.733158069,-0.207929939,8.122203545,19.161341012,27.058005387,27.080629897]},{"z0":[0,-2.356194490192345,-2.356194490192345,0,0,0],"target":[0,0],"dt":0.04,"controls":[-2.877473456,-1.102994733,0.71214781,2.151740943,2.849889081,2.799507904,2.217677381,1.353010559,0.447351976,-0.254172879,-0.579841266,-0.562107992,-0.376909561,-0.183743362,-0.069807536,-0.063174606,-0.155378103,-0.318752119,-0.519498286,-0.728563171,-0.92843493,-1.112568545,-1.277895547,-1.415511895,-1.505925053,-1.522476701,-1.441007018,-1.249450535,-0.952037624,-0.567629953,-0.125197385,0.340817354,0.794443585,1.20189931,1.535143076,1.774605654,1.910344873,1.94127811,1.872644837,1.712728124,1.470623905,1.156702441,0.785913475,0.381945692,-0.021375321,-0.384820851,-0.67547161,-0.881620359,-1.022778727,-1.146639341,-1.31094357,-1.556300225,-1.883693763,-2.252368201,-2.599022178,-2.86324673,-3.005551764,-3.01237449,-2.887726256,-2.636706071,-2.251833547,-1.712522892,-0.999835553,-0.11922444,0.880181577,1.899215821,2.800627528,3.443339472,3.738694901,3.710645997,3.523780313,3.419071271,3.507856961,3.670166849,3.725003461,3.595352691,3.346833712,3.131942944,3.07018614,3.145619685,3.19928137,3.009796399,2.406820003,1.341690658,-0.118649843,-1.828499692,-3.564339674,-5.003224933,-5.796883994,-5.901262173,-5.858655599,-7.373700877,-9.357480406,-8.047150803,-3.283732825,4.150061464,11.681213245,10.339793815,8.560268747,7.727307447,6.61827841,4.681675617,1.860086081,-1.577373619,-5.405278297,-9.227465227,-12.51269171,-14.254672854,-12.582227645,-5.578117335,2.885058611,8.385089422,11.500536281,9.910895163,0.829013372,-11.162042838,-5.20361678,0.829729509,-4.212890276,-10.786791118,-13.298894805,-10.292969135,-5.389398227,0.947628744,4.811665946,7.261077762,10.667690652,27.109071215]},{"z0":[0,-2.356194490192345,2.356194490192345,0,0,0],"target":[0,0],"dt":0.04,"controls":[1.837252522,0.51974344,-0.624251674,-1.387591436,-1.259848398,0.261095825,0.767055192,0.110405956,-0.091077661,0.050158606,0.269790129,0.463541349,0.613687727,0.698160277,0.612488343,0.078558727,-1.208401241,-1.837894131,-1.316139938,-0.646380861,-0.055633226,0.476133516,0.968608618,1.421917104,1.824553379,2.144273097,2.268929177,1.831140981,-0.2352959,-4.266672012,-5.144764007,-3.644039099,-2.135143469,-0.961626378,-0.136965413,0.417917157,0.811489328,1.13058954,1.419597646,1.686944271,1.915446509,2.07218591,2.130280218,2.113295879,2.158934769,2.600129052,3.910032364,3.363514503,-1.751509111,-3.766385935,-2.941931293,-2.352420993,-1.904259763,-1.526930043,-1.385437308,-1.650401944,-2.061215864,-2.391802795,-2.583783663,-2.610295436,-2.491008694,-2.311724191,-2.129474188,-1.912759658,-1.575148029,-1.005764616,-0.133549656,1.046044077,2.451024,3.812483393,4.368182088,2.83934967,2.295689965,2.721376027,2.237182296,1.643117211,1.192375587,0.83600236,0.574024782,0.606786837,1.555334282,5.128536359,11.990989087,7.403878411,7.054908591,2.763809918,-1.487272256,-5.069361355,-11.012085291,-19.939656927,-8.092875409,-2.647051408,-0.430447946,4.844892221,9.430430962,8.551620586,4.933031379,1.916070379,0.262221419,-0.54671231,-1.100664217,-1.743179912,-2.561665162,-3.581351,-4.867547986,-6.263460194,-7.570125008,-8.237976235,-6.363682697,1.236474742,9.230206429,11.043025892,10.679082292,7.321524704,-1.209493928,-11.801775706,-8.407816336,-3.351567496,-2.872100306,-9.738810234,-12.339858954,-8.778762547,-5.105581662,-10.907373395,6.344803217,4.990936698,16.173981739,27.038582579]},{"z0":[0,-3.141592653589793,-1.5707963267948966,0,0,0],"target":[0,0],"dt":0.04,"controls":[5.481457767,3.232956982,0.86928536,-1.557925714,-3.808829283,-5.103962889,-4.244133239,-2.158938309,-0.491806447,0.704000099,1.6755814,2.516589603,3.200168064,3.577130054,3.383703729,2.451746671,1.050279534,-0.305450385,-1.376640564,-2.218138753,-2.940452088,-3.567931881,-3.984229846,-3.981867004,-3.457537204,-2.532127918,-1.420585265,-0.288945624,0.759051356,1.64625175,2.302687234,2.676668018,2.763477457,2.618293657,2.334851337,2.011389954,1.728106907,1.536712631,1.455534429,1.469749598,1.539308188,1.613178132,1.643183484,1.590832388,1.426823357,1.128938656,0.684378321,0.097660712,-0.600917791,-1.35390675,-2.086119312,-2.721142319,-3.197449289,-3.478944685,-3.559694157,-3.465935675,-3.254301337,-2.997623881,-2.759295913,-2.574301071,-2.447798814,-2.363490754,-2.291574624,-2.192988551,-2.020109382,-1.715649837,-1.216216092,-0.468905676,0.548244612,1.829144575,3.354437264,5.051408372,6.681869998,7.814416847,8.097775415,7.552661527,6.471006377,5.170974003,3.892238892,2.831132117,2.118447962,1.684717619,1.457776819,1.357392386,1.288622078,1.154425121,0.831873649,0.152069639,-1.077955586,-2.997562796,-5.163385511,-6.742146765,-7.046045796,-5.61131527,-1.426864419,3.97995859,4.985185936,-5.78317877,-16.648041045,-7.922294607,3.545159405,8.342460169,7.632354158,4.172188812,-0.308161753,-4.983763806,-9.150788899,-10.500185738,-11.176080093,-7.914111481,-10.287179301,3.516059043,9.197751369,14.191922919,22.726729453,11.753576487,-1.683141791,-0.795044023,20.807412709,-18.859163427,-27.240245953,-27.245190598,-27.226462106,-27.173054396,14.90075955,27.104397727,27.246283963,20.554444725]},{"z0":[0,-1.5707963267948966,-3.141592653589793,0,0,0],"target":[0,-6.283185307179586],"dt":0.04,"controls":[3.114377782,1.61512111,0.212154064,-0.983071435,-1.687753513,-1.14017658,1.220514248,2.037027007,1.524699584,0.962509484,0.385138853,-0.188179824,-0.571976638,-0.006791447,0.662178874,0.195787734,-0.654439579,-1.533561615,-2.289811582,-2.826201088,-3.037980859,-2.801429524,-2.034177863,-0.779413989,0.758401476,2.177098352,2.513056211,0.326306354,0.632267005,0.813268084,0.371132757,0.024750837,-0.027261253,0.099210315,0.247275797,0.345895059,0.39048514,0.395780825,0.368044067,0.300586656,0.192028585,0.086555961,0.103945273,0.356698326,0.73011917,0.699356543,0.416410528,2.186270256,2.031579105,0.970739571,-0.237309324,-1.299677917,-2.093849614,-2.608376661,-2.897949687,-3.054107375,-3.168804757,-3.290859201,-3.321766779,-3.131681506,-3.387715491,1.700757026,3.072174162,4.807343385,6.428626091,7.506166528,7.063911208,4.373949073,-5.551005929,-3.839402773,-2.506257106,-1.538311444,-0.771900474,-0.170155766,0.229313624,0.394749486,0.378157472,0.343358707,0.488790919,0.93451794,1.616791131,2.249900136,2.374423075,1.574732843,-0.002142342,-1.480445975,-1.99724619,-0.819649728,-0.686137454,-0.95276483,-0.844889461,0.268800856,1.978622979,3.322204414,3.853166225,3.637650303,2.909951528,1.886331496,0.730801594,-0.423728666,-1.450137843,-2.212974716,-2.570077512,-2.408267842,-1.776732514,-1.225933038,-2.263465937,-6.885160407,-15.14169532,-22.462818724,-9.742173618,5.330506389,18.774855998,20.855270473,14.261557848,0.705988886,-8.227830189,-11.709978858,-11.199074218,-8.187887784,-4.609317927,-1.356136381,0.913996405,3.066633927,5.526530549,7.329058052,8.07563033,5.635974745]},{"z0":[0,-3.141592653589793,-2.356194490192345,0,0,0],"target":[-6.283185307179586,0],"dt":0.04,"controls":[1.430778852,0.11033998,-1.130543575,-2.099471211,-2.469848558,-2.083071573,-1.22549659,-0.256492422,0.668298724,1.497475237,2.181415353,2.644218172,2.801394692,2.613504297,2.132345277,1.474942434,0.753470843,0.046289196,-0.583870357,-1.072367914,-1.36254667,-1.432920121,-1.310758894,-1.056801323,-0.738963816,-0.417080492,-0.140468187,0.05199884,0.135809873,0.106045266,-0.022477728,-0.221450767,-0.45727448,-0.697018265,-0.911604506,-1.077752841,-1.179820597,-1.211274542,-1.174714651,-1.079937871,-0.940717032,-0.771418282,-0.584298706,-0.387867847,-0.186577618,0.018227076,0.226468945,0.437197648,0.646721612,0.847628399,1.029271118,1.180020471,1.290778807,1.358468358,1.388099679,1.392787752,1.391811471,1.406573309,1.454185268,1.540319685,1.655106576,1.774548111,1.865373833,1.890320925,1.812508252,1.599526946,1.227627483,0.685031929,-0.026630699,-0.890928002,-1.869534891,-2.885199533,-3.803255529,-4.441577021,-4.638564459,-4.345980521,-3.654709659,-2.732693633,-1.761746747,-0.918041044,-0.344809391,-0.10202942,-0.164056689,-0.465458243,-0.93779974,-1.527122505,-2.203483873,-2.963974004,-3.815996109,-4.714333548,-5.394922968,-4.993726654,-2.263237613,1.77699776,5.295862435,8.391018358,11.187922775,12.784518641,9.517479008,2.668392989,-0.114746839,0.459038034,2.896124085,6.380132084,9.819451057,10.754880171,5.787699768,-3.971770048,-6.795115424,-7.775641068,-9.909755271,-11.843859793,-11.95167719,-13.265791597,-3.522795559,4.025521287,11.409974532,25.923314592,21.65721266,-3.602466529,-27.515707295,-26.061237762,5.438432117,26.470899622,21.238916267,1.164442363,-26.142377559,-9.197495556]},{"z0":[0,-2.356194490192345,-3.141592653589793,0,0,0],"target":[0,0],"dt":0.04,"controls":[-1.185245682,-0.727850643,-0.052166905,0.744103737,1.111018793,0.838693529,0.516764543,0.322523068,0.184145025,0.060872732,-0.024781154,0.046947007,0.583602202,1.518694898,1.958527433,1.849629198,1.470083022,0.980260412,0.455432463,-0.07726075,-0.623993131,-1.215042925,-1.896828646,-2.733190112,-3.82994078,-5.323946235,-6.363417621,-4.569564194,-2.246333249,-0.582389873,0.708822993,1.838125499,2.911548009,3.961029333,4.966558246,5.899705541,6.793112291,7.777137711,8.791899739,7.155908797,0.987663807,-5.098062567,-2.299182145,-1.814203174,-2.182666396,-2.777769867,-3.407344026,-4.376689263,-5.85057718,-6.635288608,-6.46457483,-5.212086479,-3.221192021,-1.216241643,0.32834987,1.323923141,1.811660278,1.808274414,1.317823104,0.326913568,-1.091799031,-2.587902138,-3.55336758,-3.429185839,-2.217716332,-0.475522697,0.968737501,1.532167392,1.4351513,1.105815754,0.708403573,0.574310171,1.048231938,1.525783456,1.57305077,1.418855861,1.414234172,1.798763998,2.688275602,3.980439296,5.420234416,6.66340968,7.426857364,7.56388678,7.074987317,6.068791291,4.801199128,3.639398655,2.995892645,1.832618192,-2.787916064,-9.336111603,-13.826755774,-14.225152498,-3.401173055,10.613174906,16.459039428,17.854658943,16.737235399,13.274620299,10.011235698,2.443350029,-3.65516684,-27.13769487,-27.138847111,-27.12324297,-18.954574026,-6.449041961,-4.162080776,25.148363361,-27.059198438,-26.99597179,-26.943529325,-26.912131961,17.578707779,27.166007144,27.260437551,0.489812484,26.887252449,26.639747297,-21.986756644,-27.478158166,-27.459349145,-27.37187361,-2.225038707,27.231417037,27.629087645,27.959810809]},{"z0":[0,-3.141592653589793,-3.141592653589793,0,0,0],"target":[-6.283185307179586,-6.283185307179586],"dt":0.04,"controls":[-1.466302654,-0.781883164,-0.277948024,0.060909721,0.265192721,0.373150783,0.423985239,0.452557809,0.485269878,0.537185672,0.611211899,0.699868281,0.788914223,0.861382595,0.900946952,0.894432062,0.833652205,0.716674147,0.548165023,0.338531699,0.101924738,-0.146295531,-0.391894058,-0.623375987,-0.832745405,-1.015522919,-1.17023951,-1.297630204,-1.399685998,-1.478657278,-1.536102888,-1.572119946,-1.584923584,-1.570927814,-1.525375766,-1.443324434,-1.320685,-1.154954646,-0.945520714,-0.693618986,-0.402249849,-0.07631525,0.276971436,0.647628201,1.022837223,1.387721118,1.727170431,2.02851885,2.284321517,2.494094424,2.663735226,2.801634888,2.911982995,2.988905119,3.01654998,2.975884211,2.853065551,2.643344625,2.348217662,1.968264824,1.497070376,0.921425752,0.229547708,-0.575460744,-1.462596739,-2.366677082,-3.193928867,-3.842866428,-4.239221525,-4.374597647,-4.332259799,-4.26691353,-4.280749819,-4.309443008,-4.217597018,-3.951928295,-3.582033737,-3.244012652,-3.039623388,-2.955060153,-2.853262365,-2.539582667,-1.856195994,-0.746791562,0.738039526,2.461090575,4.194918707,5.603266653,6.326224229,6.301865958,5.971310384,7.437372,9.596349416,8.227607985,3.371704669,-4.300327649,-13.575772705,-12.049722963,-8.325922105,-7.008761436,-5.918679593,-4.00699226,-1.204981065,2.220637323,5.958379541,9.625417141,12.600592625,13.807818498,11.534280578,4.712384773,-2.910548475,-8.326966836,-11.617013763,-9.631081242,0.196507617,11.743369965,2.145856049,-1.298887261,7.670059529,12.802301246,14.300299858,10.448785907,4.03329977,-3.388443039,-7.873507726,-10.496908705,-14.459118276,-18.279896102]}]);
+
+const SwingProjection = (() => {
+  // Repair a known motion by solving for each control and intermediate state.
+  // Fixed endpoints leave a block-tridiagonal normal system, with 6×6 blocks.
+  const N = 6;
+  const stateScale = [0.65, 1, 1, 2, 2, 2];
+  const controlScale = 2;
+  const residualScale = [2, 1, 1, 0.4, 0.18, 0.18];
+  const dot = (a, b) => a.reduce((sum, x, i) => sum + x * b[i], 0);
+  const difference = (a, b) => a.map((x, i) => x - b[i]);
+  const transpose = a => a[0].map((_, i) => a.map(row => row[i]));
+  const multiply = (a, b) => a.map(row => b[0].map((_, j) => row.reduce((sum, x, i) => sum + x * b[i][j], 0)));
+  const multiplyVector = (a, b) => a.map(row => dot(row, b));
+  const identity = Array.from({length: N}, (_, i) => Array.from({length: N}, (_, j) => Number(i === j)));
+
+  function transition(z, u, count) {
+    for (let i = 0; i < count; i++) z = Plant.step(z, u, 0.005);
+    return z;
+  }
+
+  function linearize(z, u, count) {
+    const columns = [];
+    for (let i = 0; i <= N; i++) {
+      const h = 1e-5;
+      const plus = z.slice(), minus = z.slice();
+      if (i < N) { plus[i] += h; minus[i] -= h; }
+      const f1 = transition(plus, u + (i === N ? h : 0), count);
+      const f2 = transition(minus, u - (i === N ? h : 0), count);
+      columns.push(difference(f1, f2).map(x => x / (2 * h) * (i === N ? controlScale : stateScale[i])));
+    }
+    return transpose(columns);
+  }
+
+  function solve(a, b) {
+    const rows = a.map((row, i) => row.concat(b[i]));
+    for (let j = 0; j < N; j++) {
+      let pivot = j;
+      for (let i = j + 1; i < N; i++) if (Math.abs(rows[i][j]) > Math.abs(rows[pivot][j])) pivot = i;
+      if (pivot !== j) [rows[j], rows[pivot]] = [rows[pivot], rows[j]];
+      const diagonal = rows[j][j];
+      if (!Number.isFinite(diagonal) || Math.abs(diagonal) < 1e-13) return null;
+      for (let k = j; k < rows[j].length; k++) rows[j][k] /= diagonal;
+      for (let i = 0; i < N; i++) if (i !== j) {
+        const coefficient = rows[i][j];
+        for (let k = j; k < rows[i].length; k++) rows[i][k] -= coefficient * rows[j][k];
+      }
+    }
+    return rows.map(row => row.slice(N));
+  }
+
+  function correction(model, defects) {
+    const steps = model.length;
+    const offset = [], link = [];
+    const lower = d => d.map(row => row.slice(0, N).map((x, j) => -x * stateScale[j]));
+    for (let i = 0; i < steps; i++) {
+      const d = model[i];
+      let diagonal = d.map((row, j) => d.map((other, k) =>
+        (i > 0 ? dot(row.slice(0, N), other.slice(0, N)) : 0)
+        + (i + 1 < steps ? identity[j][k] * stateScale[j] ** 2 : 0)
+        + row[N] * other[N] + identity[j][k] * 1e-11));
+      let residual = defects[i];
+      if (i > 0) {
+        const below = lower(d);
+        const block = multiply(below, link[i - 1]);
+        diagonal = diagonal.map((row, j) => difference(row, block[j]));
+        residual = difference(residual, multiplyVector(below, offset[i - 1]));
+      }
+      const above = i + 1 < steps ? transpose(lower(model[i + 1])) : identity.map(row => row.map(() => 0));
+      const result = solve(diagonal, above.map((row, j) => row.concat(residual[j])));
+      if (!result) return null;
+      offset.push(result.map(row => row[N]));
+      link.push(result.map(row => row.slice(0, N)));
+    }
+    for (let i = steps - 2; i >= 0; i--) offset[i] = difference(offset[i], multiplyVector(link[i], offset[i + 1]));
+    const dz = [Array(N).fill(0)], du = [];
+    for (let i = 0; i < steps; i++) {
+      const d = transpose(model[i]);
+      du.push(-dot(d[N], offset[i]) * controlScale);
+      if (i > 0) dz.push(d.slice(0, N).map((row, j) =>
+        (offset[i - 1][j] * stateScale[j] - dot(row, offset[i])) * stateScale[j]));
+    }
+    dz.push(Array(N).fill(0));
+    return {dz, du};
+  }
+
+  function assessment(states, controls, count) {
+    const defects = controls.map((u, i) => difference(transition(states[i], u, count), states[i + 1]));
+    const peak = defects.reduce((best, row) => Math.max(best, ...row.map(Math.abs)), 0);
+    let loss = defects.reduce((total, row) => total + row.reduce((sum, x, i) => sum + (x * residualScale[i]) ** 2, 0), 0);
+    const rail = Plant.params.railLimit;
+    for (let i = 1; i + 1 < states.length; i++) loss += 80 * Math.max(0, Math.abs(states[i][0]) - (rail - 0.07)) ** 2;
+    return {defects, peak, loss};
+  }
+
+  function* repair(start, target, dt, nominalControls, nominalStart) {
+    const count = Math.round(dt / 0.005);
+    if (!count || !nominalStart || !nominalControls.length) return null;
+    let controls = nominalControls.slice();
+    let states = [nominalStart];
+    for (const u of controls) states.push(transition(states.at(-1), u, count));
+    if (states.some(row => row.some(x => !Number.isFinite(x)))) return null;
+    const left = start[0] - states[0][0], right = target[0] - states.at(-1)[0];
+    const duration = dt * controls.length;
+    states = states.map((row, i) => {
+      const s = i / controls.length;
+      const shifted = row.slice();
+      shifted[0] += left + (right - left) * s ** 2 * (3 - 2 * s);
+      shifted[3] += (right - left) * 6 * s * (1 - s) / duration;
+      return shifted;
+    });
+    states[0] = start;
+    states[states.length - 1] = target;
+    let score = assessment(states, controls, count);
+    const limit = Plant.params.forceLimit - 0.8;
+    const maxIterations = 12;
+    for (let iteration = 1; iteration <= maxIterations; iteration++) {
+      if (!Number.isFinite(score.loss)) return null;
+      if (score.peak < 2e-12) return controls;
+      yield {iteration, budget: maxIterations};
+      const model = controls.map((u, i) => linearize(states[i], u, count));
+      const delta = correction(model, score.defects);
+      if (!delta) return null;
+      let accepted = false;
+      for (const fraction of [1, 0.6, 0.3, 0.12, 0.04]) {
+        const trialStates = states.map((row, i) => row.map((x, j) => x + fraction * delta.dz[i][j]));
+        const trialControls = controls.map((u, i) => Math.max(-limit, Math.min(limit, u + fraction * delta.du[i])));
+        const trialScore = assessment(trialStates, trialControls, count);
+        if (trialScore.loss < score.loss) {
+          controls = trialControls;
+          states = trialStates;
+          score = trialScore;
+          accepted = true;
+          break;
+        }
+      }
+      if (!accepted) break;
+    }
+    return score.peak < 1e-7 ? controls : null;
+  }
+
+  return {repair};
+})();
+
+
+const SwingPlanner = (() => {
+  const N = 6;
+  const samplePeriod = 0.01;
+  const physicsPeriod = 0.005;
+  const planLimit = Plant.params.forceLimit - 0.8;
+  const rail = Plant.params.railLimit;
+  const localLimits = [0.10, 0.10, 0.45, 0.65, 0.75];
+  const matrix = () => Array.from({length: N}, () => Array(N).fill(0));
+  const zero = () => Array(N).fill(0);
+  const diagonal = values => values.map((value, i) => values.map((_, j) => i === j ? value : 0));
+  const dot = (a, b) => a.reduce((sum, value, i) => sum + value * b[i], 0);
+  const clip = (value, limit) => Math.max(-limit, Math.min(limit, value));
+  const clearance = z => Math.min(0.04, (rail - Math.abs(z[0])) / 2);
+  const wrap = theta => {
+    const tau = 2 * Math.PI;
+    return ((theta + Math.PI) % tau + tau) % tau - Math.PI;
+  };
+
+  function principalState(z) {
+    return [z[0], wrap(z[1]), wrap(z[2]), z[3], z[4], z[5]];
+  }
+
+  function error(z, reference, periodic) {
+    const difference = z.map((value, i) => value - reference[i]);
+    if (periodic) {
+      difference[1] = wrap(difference[1]);
+      difference[2] = wrap(difference[2]);
+    }
+    return difference;
+  }
+
+  function integrate(z, u, steps) {
+    let state = z;
+    for (let i = 0; i < steps; i++) state = Plant.step(state, u, physicsPeriod);
+    return state;
+  }
+
+  function viableObstruction(z, maxForce = Plant.params.forceLimit) {
+    const {totalMass, p1, p2} = Plant.constants;
+    const {b} = Plant.params;
+    const p = totalMass * z[3] + p1 * Math.cos(z[1]) * z[4] + p2 * Math.cos(z[2]) * z[5];
+    const y = totalMass * z[0] + p1 * Math.sin(z[1]) + p2 * Math.sin(z[2]);
+    const yMax = totalMass * rail + p1 + p2;
+    for (const direction of [-1, 1]) {
+      const momentum = direction * p - b * (rail - direction * z[0]);
+      if (momentum <= 0) continue;
+      const bound = momentum * momentum / (2 * maxForce);
+      if (bound > yMax - direction * y + 1e-9) {
+        return {time: momentum / maxForce, direction, bound, room: yMax - direction * y};
+      }
+    }
+    return null;
+  }
+
+  function derivative(z, u, steps) {
+    const A = matrix();
+    for (let j = 0; j < N; j++) {
+      const h = 1e-5 * Math.max(1, Math.abs(z[j]));
+      const plus = z.slice();
+      const minus = z.slice();
+      plus[j] += h;
+      minus[j] -= h;
+      const fPlus = integrate(plus, u, steps);
+      const fMinus = integrate(minus, u, steps);
+      for (let i = 0; i < N; i++) A[i][j] = (fPlus[i] - fMinus[i]) / (2 * h);
+    }
+    const du = 1e-4;
+    const fPlus = integrate(z, u + du, steps);
+    const fMinus = integrate(z, u - du, steps);
+    return {A, B: fPlus.map((value, i) => (value - fMinus[i]) / (2 * du))};
+  }
+
+  function quadratic(A, B, V) {
+    const VA = matrix();
+    const VB = zero();
+    for (let i = 0; i < N; i++) {
+      for (let k = 0; k < N; k++) {
+        const v = V[i][k];
+        VB[i] += v * B[k];
+        for (let j = 0; j < N; j++) VA[i][j] += v * A[k][j];
+      }
+    }
+    const AA = matrix();
+    const BA = zero();
+    for (let i = 0; i < N; i++) {
+      for (let k = 0; k < N; k++) {
+        BA[i] += B[k] * VA[k][i];
+        for (let j = i; j < N; j++) AA[i][j] += A[k][i] * VA[k][j];
+      }
+    }
+    for (let i = 1; i < N; i++) for (let j = 0; j < i; j++) AA[i][j] = AA[j][i];
+    return {AA, BA, BB: dot(B, VB)};
+  }
+
+  const runningWeights = [0.10, 0.018, 0.016, 0.019, 0.0012, 0.0012];
+  const endWeights = [110, 320, 340, 38, 26, 23];
+  const forceWeight = 0.0015;
+
+  function stage(z, u, target, dt) {
+    const e = error(z, target, false);
+    const boundary = Math.max(0, Math.abs(z[0]) - (rail - 0.48));
+    const cost = 0.5 * dt * (dot(e, e.map((value, i) => value * runningWeights[i]))
+      + forceWeight * u * u + 1400 * boundary * boundary);
+    const gradient = e.map((value, i) => value * runningWeights[i] * dt);
+    gradient[0] += 1400 * dt * boundary * Math.sign(z[0]);
+    const weights = runningWeights.map(value => value * dt);
+    if (boundary > 0) weights[0] += 1400 * dt;
+    return {cost, gradient, weights};
+  }
+
+  function terminal(z, target) {
+    const e = error(z, target, false);
+    return 0.5 * dot(e, e.map((value, i) => value * endWeights[i]));
+  }
+
+  function roll(start, controls, target, steps, dt, base, policy, alpha) {
+    const states = [start];
+    const commands = [];
+    let z = start;
+    let cost = 0;
+    let peak = Math.abs(z[0]);
+    for (let i = 0; i < controls.length; i++) {
+      const correction = policy ? alpha * policy[i].k + dot(policy[i].K, error(z, base.states[i], false)) : 0;
+      const u = clip(controls[i] + correction, planLimit);
+      cost += stage(z, u, target, dt).cost;
+      z = integrate(z, u, steps);
+      if (z.some(value => !Number.isFinite(value) || Math.abs(value) > 1e4)) {
+        return {cost: Infinity, states, commands, peak: Infinity};
+      }
+      peak = Math.max(peak, Math.abs(z[0]));
+      states.push(z);
+      commands.push(u);
+    }
+    return {states, commands, peak, cost: cost + terminal(z, target)};
+  }
+
+  function backward(rollout, target, dt, derivatives, regularization) {
+    let V = diagonal(endWeights);
+    let v = error(rollout.states.at(-1), target, false).map((value, i) => value * endWeights[i]);
+    const policy = Array(rollout.commands.length);
+    for (let i = rollout.commands.length - 1; i >= 0; i--) {
+      const {A, B} = derivatives[i];
+      const {AA, BA, BB} = quadratic(A, B, V);
+      const u = rollout.commands[i];
+      const {gradient, weights} = stage(rollout.states[i], u, target, dt);
+      const Quu = forceWeight * dt + BB + regularization;
+      if (!(Quu > 1e-10) || !Number.isFinite(Quu)) return null;
+      const Qu = forceWeight * dt * u + dot(B, v);
+      const k = Math.max(-planLimit - u, Math.min(planLimit - u, -Qu / Quu));
+      const free = Math.abs(u + k) < planLimit - 1e-7;
+      const K = free ? BA.map(value => -value / Quu) : zero();
+      const nextV = matrix();
+      const nextv = zero();
+      for (let a = 0; a < N; a++) {
+        let Qx = gradient[a];
+        for (let j = 0; j < N; j++) Qx += A[j][a] * v[j];
+        nextv[a] = Qx + BA[a] * k;
+        for (let b = 0; b < N; b++) {
+          nextV[a][b] = AA[a][b] + (a === b ? weights[a] : 0)
+            - (free ? BA[a] * BA[b] / Quu : 0);
+        }
+      }
+      policy[i] = {k, K};
+      v = nextv;
+      V = nextV;
+    }
+    return policy;
+  }
+
+  const makeLqr = () => Control.build("lqr");
+
+  function captureCanSettle(z, ref, margin, regulator, t, applied) {
+    if (margin <= 0) return null;
+    let state = z;
+    let peak = Math.abs(state[0]);
+    for (let i = 0; i < 5 / samplePeriod; i++) {
+      const command = regulator.run({z: principalState(state), ref, dt: samplePeriod, t: t + i * samplePeriod, applied});
+      if (!Number.isFinite(command)) return null;
+      const u = clip(command, Plant.params.forceLimit);
+      applied = u;
+      const half = integrate(state, u, 1);
+      state = integrate(half, u, 1);
+      if (state.some(value => !Number.isFinite(value))) return null;
+      peak = Math.max(peak, Math.abs(half[0]), Math.abs(state[0]));
+      if (peak > rail - margin) return null;
+    }
+    const final = principalState(state);
+    if (Math.abs(final[0] - ref) > 0.018 || final.slice(1).some(value => Math.abs(value) > 0.025)) return null;
+    return {peak, final};
+  }
+
+  function localCandidate(state, ref, checkCapture) {
+    const z = principalState(state);
+    if (z.slice(1).some((value, index) => Math.abs(value) > localLimits[index])) return null;
+    const check = checkCapture(z, ref, clearance(z), 0, 0);
+    if (!check) return null;
+    return {trajectory: [], travel: check.peak, peakForce: 0, seconds: 0, target: ref};
+  }
+
+  function trackingGains(samples, commands) {
+    const weights = [4, 22, 22, 1.2, 0.36, 0.36];
+    const rho = 0.65;
+    let V = diagonal([150, 260, 260, 35, 21, 21]);
+    const gains = Array(commands.length);
+    for (let i = commands.length - 1; i >= 0; i--) {
+      const {A, B} = derivative(samples[i], commands[i], 2);
+      const {AA, BA, BB} = quadratic(A, B, V);
+      const divisor = rho + BB;
+      gains[i] = BA.map(value => value / divisor);
+      V = AA.map((row, j) => row.map((value, k) => value + (j === k ? weights[j] : 0)
+        - BA[j] * BA[k] / divisor));
+    }
+    return gains;
+  }
+
+  function verifyPlan(start, controls, dt, ref, checkCapture = checkLqrCapture) {
+    const subdivisions = Math.round(dt / samplePeriod);
+    const margin = clearance(start);
+    if (margin <= 0 || !Number.isInteger(subdivisions) || subdivisions < 1 ||
+        controls.some(u => !Number.isFinite(u) || Math.abs(u) > Plant.params.forceLimit)) return null;
+    const samples = [];
+    const commands = [];
+    let state = start;
+    let travel = Math.abs(state[0]);
+    let peakForce = 0;
+    for (const u of controls) {
+      for (let j = 0; j < subdivisions; j++) {
+        samples.push(state);
+        commands.push(u);
+        const half = integrate(state, u, 1);
+        state = integrate(half, u, 1);
+        if (state.some(value => !Number.isFinite(value))) return null;
+        travel = Math.max(travel, Math.abs(half[0]), Math.abs(state[0]));
+        peakForce = Math.max(peakForce, Math.abs(u));
+        if (travel > rail - margin) return null;
+      }
+    }
+    const principal = principalState(state);
+    if (Math.abs(principal[0] - ref) > 0.28 || principal.slice(1).some((value, i) => Math.abs(value) > localLimits[i] * 0.85)) return null;
+    const seconds = commands.length * samplePeriod;
+    const checked = checkCapture(state, ref, margin, seconds, commands.at(-1) ?? 0);
+    if (!checked) return null;
+    const gains = trackingGains(samples, commands);
+    return {
+      trajectory: commands.map((u, i) => ({z: samples[i], u, K: gains[i]})),
+      travel: Math.max(travel, checked.peak),
+      peakForce,
+      seconds,
+      target: ref,
+    };
+  }
+
+  function closeToTarget(z, target, multiplier) {
+    const e = error(z, target, false);
+    return Math.abs(e[0]) <= 0.28 * multiplier
+      && e.slice(1).every((value, i) => Math.abs(value) <= localLimits[i] * multiplier);
+  }
+
+  function* improve(start, ref, target, seed, budget, iterationLabel, checkCapture) {
+    const dt = seed.dt;
+    const steps = Math.round(dt / physicsPeriod);
+    const targetZ = [ref, target[0], target[1], 0, 0, 0];
+    let base = roll(start, seed.controls, targetZ, steps, dt);
+    if (!Number.isFinite(base.cost)) return null;
+    let regularization = 0.05;
+    const margin = clearance(start);
+    let derivatives;
+    for (let iteration = 0; iteration <= budget; iteration++) {
+      if (closeToTarget(base.states.at(-1), targetZ, 0.85) && base.peak < rail - margin) {
+        const valid = verifyPlan(start, base.commands, dt, ref, checkCapture);
+        if (valid) return valid;
+      }
+      if (iteration === budget) break;
+      yield {label: iterationLabel, iteration: iteration + 1, budget};
+      if (!derivatives) derivatives = base.commands.map((u, i) => derivative(base.states[i], u, steps));
+      const policy = backward(base, targetZ, dt, derivatives, regularization);
+      let best = null;
+      if (policy) {
+        for (const alpha of [1, 0.5, 0.25, 0.125, 0.0625, 0.025]) {
+          const trial = roll(start, base.commands, targetZ, steps, dt, base, policy, alpha);
+          if (trial.cost < base.cost - 1e-8 && (!best || trial.cost < best.cost)) best = trial;
+          if (trial.cost < 0.72 * base.cost) break;
+        }
+      }
+      if (best) {
+        base = best;
+        derivatives = null;
+        regularization = Math.max(1e-7, regularization * 0.45);
+      } else {
+        regularization *= 6;
+        if (regularization > 1e6) break;
+      }
+    }
+    return null;
+  }
+
+  function resample(seed, dt = seed.dt) {
+    const count = Math.round(seed.controls.length * seed.dt / dt);
+    return Array.from({length: count}, (_, i) =>
+      seed.controls[Math.min(seed.controls.length - 1, Math.floor((i * dt + 1e-8) / seed.dt))]);
+  }
+
+  function seedCandidates(start, seeds) {
+    const list = [];
+    for (const seed of seeds) {
+      for (const mirror of [1, -1]) {
+        const mapped = seed.z0.map(value => value * mirror);
+        const startAngles = [1, 2].map(i => mapped[i] + Math.round((start[i] - mapped[i]) / (2 * Math.PI)) * 2 * Math.PI);
+        const seedEnd = seed.target ?? [0, 0];
+        const target = startAngles.map((value, i) => value + mirror * seedEnd[i] - mapped[i + 1]);
+        const origin = [mapped[0], ...startAngles, mapped[3], mapped[4], mapped[5]];
+        const delta = error(start, origin, false);
+        const score = dot(delta, delta.map((value, i) => value * [0.2, 1, 1, 0.12, 0.06, 0.06][i]));
+        const controls = resample(seed).map(value => value * mirror);
+        list.push({target, origin, seed: {dt: seed.dt, controls}, score});
+      }
+    }
+    return list.sort((a, b) => a.score - b.score);
+  }
+
+  function harmonicCandidates(start) {
+    const dt = 0.04;
+    const branches = [1, 2].map(i => [0, (start[i] > 0 ? 1 : -1) * 2 * Math.PI]);
+    const targets = branches[0].flatMap(a => branches[1].map(b => [a, b]));
+    const ordered = targets.sort((a, b) => Math.hypot(a[0] - start[1], a[1] - start[2])
+      - Math.hypot(b[0] - start[1], b[1] - start[2]));
+    const list = [];
+    for (const [frequency, phase] of [[0.95, 0], [1.35, Math.PI / 2], [0.75, Math.PI]]) {
+      for (const target of ordered.slice(0, 2)) {
+        const controls = Array.from({length: 95}, (_, i) =>
+          11 * Math.sin(2 * Math.PI * frequency * i * dt + phase) * Math.sin(Math.PI * i / 95));
+        list.push({target, seed: {dt, controls}, score: Infinity});
+      }
+    }
+    return list;
+  }
+
+  const checkLqrCapture = (z, ref, margin, elapsed, applied) =>
+    captureCanSettle(z, ref, margin, makeLqr(), elapsed, applied);
+
+  function* plan(state, ref, seeds, makeRegulator = makeLqr, startTime = 0) {
+    const checkCapture = (z, target, margin, elapsed, applied) =>
+      captureCanSettle(z, target, margin, makeRegulator(), startTime + elapsed, applied);
+    const obstruction = viableObstruction(state);
+    if (obstruction) return {obstruction};
+    const local = localCandidate(state, ref, checkCapture);
+    if (local) return local;
+    const start = principalState(state);
+    const nearest = seedCandidates(start, seeds).slice(0, 6);
+    for (const {seed} of nearest) {
+      const exact = verifyPlan(start, seed.controls, seed.dt, ref, checkCapture);
+      if (exact) return exact;
+    }
+    for (let i = 0; i < Math.min(4, nearest.length); i++) {
+      const {target, origin, seed} = nearest[i];
+      const correction = SwingProjection.repair(start, [ref, ...target, 0, 0, 0], seed.dt, seed.controls, origin);
+      let iteration = 0;
+      let item = correction.next();
+      while (!item.done) {
+        yield {label: "校正备用轨迹 " + (i + 1) + " / " + Math.min(4, nearest.length), iteration: ++iteration};
+        item = correction.next();
+      }
+      if (item.value) {
+        const valid = verifyPlan(start, item.value, seed.dt, ref, checkCapture);
+        if (valid) return valid;
+      }
+    }
+    const candidates = nearest.concat(harmonicCandidates(start));
+    for (let i = 0; i < candidates.length; i++) {
+      const {target, seed, score} = candidates[i];
+      const result = yield* improve(start, ref, target, seed, score < 0.05 ? 18 : 36,
+        "候选 " + (i + 1) + " / " + candidates.length, checkCapture);
+      if (result) return result;
+    }
+    return null;
+  }
+
+  function build(regulator = makeLqr()) {
+    let trajectory = null;
+    let index = 0;
+    return {
+      detail: regulator.detail,
+      ready: () => trajectory !== null,
+      phase: () => trajectory && index < trajectory.length ? "轨迹摆起" : "直立反馈",
+      setPlan(solution) {
+        trajectory = solution.trajectory;
+        index = 0;
+      },
+      run({z, ref, dt, t, applied}) {
+        if (!trajectory) throw new Error("请先计算摆起轨迹");
+        const sample = trajectory[index];
+        if (sample) {
+          index += 1;
+          return sample.u - dot(sample.K, error(z, sample.z, true));
+        }
+        return regulator.run({z: principalState(z), ref, dt, t, applied});
+      },
+    };
+  }
+
+  return {plan, build, principalState, viableObstruction, verifyPlan};
+})();
+
+
+(() => {
+  const byId = id => document.getElementById(id);
+  const DEG = 180 / Math.PI;
+  const PERIOD = 0.01;
+  const DEFAULT_INITIAL = [0, -Math.PI, -Math.PI, 0, 0, 0];
+  const UPRIGHT_INITIAL = [0, 0.08, -0.06, 0, 0, 0];
+  const CUSTOM_DEFAULT = "119.3952*th1 - 152.9691*th2 - 3.1623*ex - 5.8254*v + 0.4434*w1 - 19.6260*w2";
+  const swingDefinition = {
+    id: "swing",
+    name: "非线性摆起 → LQR 稳定",
+    description: "先根据当前状态计算有限推力、有限轨道内的轨迹。两杆摆到直立附近后，由 LQR 接管。",
+    fields: [],
+  };
+  const definitions = new Map([swingDefinition, ...Control.definitions].map(definition => [definition.id, definition]));
+  definitions.set("custom", {
+    id: "custom",
+    name: "自定义公式",
+    description: "输入静态或动态控制律。默认示例是稳定直立点的全状态反馈，可直接修改。",
+    fields: [],
+  });
+
+  const scene = byId("scene");
+  const chartNames = ["position", "angles", "velocity", "angularVelocity", "force"];
+  const plots = Object.fromEntries(chartNames.map(name => [name, byId("chart-" + name)]));
+  const graphics = Visuals.create({scene, plots, params: Plant.params});
+  const picker = byId("controller");
+  const fields = byId("controller-fields");
+  const result = byId("controller-result");
+  const refs = byId("reference");
+  const dynamics = byId("dynamics-type");
+  const autoSwing = byId("auto-swing");
+  const status = byId("status");
+  const stepButton = byId("single-step");
+  const initialInputs = [...document.querySelectorAll("[data-initial]")];
+  const configuration = new Map();
+  const customInputs = ["custom-u", "custom-ds1", "custom-ds2", "custom-ds3"].map(byId);
+
+  for (const definition of definitions.values()) {
+    const option = document.createElement("option");
+    option.value = definition.id;
+    option.textContent = definition.name;
+    picker.append(option);
+    configuration.set(definition.id, Object.fromEntries(definition.fields.map(field => [field.key, field.value])));
+  }
+  picker.value = "swing";
+
+  let activeId = "swing";
+  let makeRegulator = () => Control.build("lqr");
+  let controller = SwingPlanner.build(makeRegulator());
+  let initial = DEFAULT_INITIAL.slice();
+  let z = initial.slice();
+  let ref = 0;
+  let force = 0;
+  let disturbance = 0;
+  let disturbanceTicks = 0;
+  let ticks = 0;
+  let history = [];
+  let playing = false;
+  let fault = "";
+  let lastTime = 0;
+  let lastPaint = 0;
+  let accumulator = 0;
+  let frameId = null;
+  let planning = null;
+
+  function displayController(text, tone = "ok") {
+    result.textContent = text;
+    result.dataset.tone = tone;
+  }
+
+  function setDirty() {
+    displayController("待应用 · 当前运行：" + definitions.get(activeId).name, "pending");
+  }
+
+  function setDefaultCustom() {
+    customInputs.forEach((input, index) => { input.value = index === 0 ? CUSTOM_DEFAULT : "0"; });
+  }
+
+  function renderFields() {
+    const definition = definitions.get(picker.value);
+    const values = configuration.get(picker.value);
+    byId("controller-description").textContent = definition.description;
+    byId("custom-fields").hidden = definition.id !== "custom";
+    fields.replaceChildren();
+    for (const field of definition.fields) {
+      const label = document.createElement("label");
+      label.className = "field";
+      const title = document.createElement("span");
+      title.textContent = field.label;
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = values[field.key];
+      input.spellcheck = false;
+      input.autocomplete = "off";
+      input.maxLength = 240;
+      input.addEventListener("input", () => {
+        values[field.key] = input.value;
+        setDirty();
+      });
+      label.append(title, input);
+      if (field.hint) {
+        const hint = document.createElement("small");
+        hint.className = "helper";
+        hint.textContent = field.hint;
+        label.append(hint);
+      }
+      fields.append(label);
+    }
+  }
+
+  function usesSwing(id = activeId) {
+    return id === "swing" || (autoSwing.checked && dynamics.value === "nonlinear");
+  }
+
+  function makeCaptureRegulator(id, factory) {
+    if (id !== "open" || !usesSwing(id)) return factory;
+    return () => {
+      const signal = factory();
+      const lqr = Control.build("lqr");
+      return {
+        detail: "LQR 稳摆 + 开环信号。" + signal.detail,
+        run: input => lqr.run(input) + signal.run(input),
+      };
+    };
+  }
+
+  function showAppliedController() {
+    const startup = controller.ready ? "自动摆起 · 直立后接管\n" : "";
+    displayController("已应用 · " + definitions.get(activeId).name + "\n" + startup + controller.detail);
+  }
+
+  function applyController() {
+    const id = picker.value;
+    try {
+      let factory;
+      if (id === "swing") {
+        factory = () => Control.build("lqr");
+      } else if (id === "custom") {
+        const [u, ...rates] = customInputs.map(input => input.value);
+        factory = () => Expression.controller(u, rates);
+      } else {
+        const values = {...configuration.get(id)};
+        factory = () => Control.build(id, values);
+      }
+      const capture = makeCaptureRegulator(id, factory);
+      const next = capture();
+      if (id === "custom") {
+        next.run({z: SwingPlanner.principalState(z), ref, t: ticks * PERIOD, dt: 0});
+      }
+      if (planning || (playing && usesSwing(id))) pause();
+      activeId = id;
+      makeRegulator = factory;
+      controller = usesSwing() ? SwingPlanner.build(next) : next;
+      dynamics.disabled = id === "swing";
+      if (id === "swing") dynamics.value = "nonlinear";
+      autoSwing.disabled = id === "swing" || dynamics.value === "linear";
+      showAppliedController();
+      if (fault.startsWith("控制器") || fault === "未找到可行轨迹" || fault === "轨道约束不可满足") fault = "";
+      updateTransport();
+    } catch (error) {
+      displayController(error.message + "\n当前运行：" + definitions.get(activeId).name, "error");
+    }
+  }
+
+  function setStatus(message, mode) {
+    if (status.textContent !== message) status.textContent = message;
+    status.dataset.mode = mode;
+  }
+
+  function updateTransport() {
+    byId("play-label").textContent = planning ? "取消规划" : playing ? "暂停仿真" : ticks ? "继续仿真" : "运行仿真";
+    byId("play-icon").textContent = planning ? "■" : playing ? "Ⅱ" : "▶";
+    byId("play").disabled = Boolean(fault);
+    stepButton.disabled = playing || Boolean(planning) || Boolean(fault);
+    if (fault) setStatus(fault, "error");
+    else if (planning) setStatus("计算摆起轨迹", "running");
+    else if (playing) setStatus(disturbanceTicks ? "扰动中" : controller.phase?.() ?? "运行中", "running");
+    else setStatus(disturbanceTicks ? "扰动已就绪" : ticks ? "已暂停" : "待运行", "paused");
+  }
+
+  function record() {
+    history.push({t: ticks * PERIOD, z, u: force, ref, disturbance});
+  }
+
+  function fixed(value, digits) {
+    return (Math.abs(value) < 0.5 * 10 ** -digits ? 0 : value).toFixed(digits);
+  }
+
+  function draw() {
+    const windowSeconds = Number(byId("chart-window").value);
+    const visibleSamples = Math.ceil(windowSeconds / PERIOD) + 2;
+    graphics.drawScene(z, ref, force);
+    graphics.drawPlots(history.slice(-visibleSamples), {windowSeconds});
+    byId("time-value").textContent = fixed(ticks * PERIOD, 2);
+    byId("x-value").textContent = fixed(z[0], 3);
+    const principal = SwingPlanner.principalState(z);
+    byId("t1-value").textContent = fixed(principal[1] * DEG, 2);
+    byId("t2-value").textContent = fixed(principal[2] * DEG, 2);
+    byId("u-value").textContent = fixed(force, 2);
+  }
+
+  function pause() {
+    const wasPlanning = Boolean(planning);
+    planning = null;
+    playing = false;
+    if (frameId !== null) cancelAnimationFrame(frameId);
+    frameId = null;
+    if (wasPlanning) displayController("规划已取消。再次点击运行即可重新计算。");
+    updateTransport();
+    draw();
+  }
+
+  function reset() {
+    planning = null;
+    playing = false;
+    if (frameId !== null) cancelAnimationFrame(frameId);
+    frameId = null;
+    fault = "";
+    ticks = 0;
+    force = 0;
+    disturbance = 0;
+    disturbanceTicks = 0;
+    z = dynamics.value === "linear" ? SwingPlanner.principalState(initial) : initial.slice();
+    history = [];
+    const next = makeCaptureRegulator(activeId, makeRegulator)();
+    controller = usesSwing() ? SwingPlanner.build(next) : next;
+    autoSwing.disabled = activeId === "swing" || dynamics.value === "linear";
+    if (picker.value === activeId) {
+      showAppliedController();
+    }
+    record();
+    updateTransport();
+    draw();
+  }
+
+  function linearStep(state, input, dt) {
+    const rate = values => Plant.A.map((row, i) =>
+      row.reduce((sum, coefficient, j) => sum + coefficient * values[j], Plant.B[i] * input));
+    const k1 = rate(state);
+    const k2 = rate(state.map((value, i) => value + dt * k1[i] / 2));
+    const k3 = rate(state.map((value, i) => value + dt * k2[i] / 2));
+    const k4 = rate(state.map((value, i) => value + dt * k3[i]));
+    return state.map((value, i) => value + dt * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6);
+  }
+
+  function advance() {
+    if (fault) return;
+    const t = ticks * PERIOD;
+    let desired;
+    try {
+      desired = controller.run({z: SwingPlanner.principalState(z), ref, dt: PERIOD, t, applied: force});
+      if (!Number.isFinite(desired)) throw new Error("输出不是有限数值");
+    } catch (error) {
+      fault = "控制器输出异常";
+      displayController("控制器停止 · " + error.message, "error");
+      pause();
+      return;
+    }
+    const limit = Plant.params.forceLimit;
+    force = Math.max(-limit, Math.min(limit, desired));
+    const usedDisturbance = disturbanceTicks > 0 ? disturbance : 0;
+    const stepPlant = dynamics.value === "linear" ? linearStep : Plant.step;
+    const half = stepPlant(z, force + usedDisturbance, PERIOD / 2);
+    const next = stepPlant(half, force + usedDisturbance, PERIOD / 2);
+    if (next.some(value => !Number.isFinite(value) || Math.abs(value) > 1e7)) {
+      fault = "状态数值发散";
+      pause();
+      return;
+    }
+    z = next;
+    ticks += 1;
+    if (!disturbanceTicks) disturbance = 0;
+    record();
+    if (disturbanceTicks) disturbanceTicks -= 1;
+    if (Math.max(Math.abs(half[0]), Math.abs(z[0])) >= Plant.params.railLimit) {
+      fault = "到达轨道边界";
+      pause();
+    }
+  }
+
+  function animate(now) {
+    frameId = null;
+    if (!playing) return;
+    if (!lastTime) lastTime = now;
+    const speed = Number(byId("speed").value);
+    accumulator += Math.min((now - lastTime) / 1000, 0.1) * speed;
+    lastTime = now;
+    while (accumulator + 1e-10 >= PERIOD && playing) {
+      advance();
+      accumulator -= PERIOD;
+    }
+    if (now - lastPaint >= 1000 / 30) {
+      lastPaint = now;
+      updateTransport();
+      draw();
+    }
+    if (playing) frameId = requestAnimationFrame(animate);
+  }
+
+  function startPlayback() {
+    if (fault || playing) return;
+    playing = true;
+    lastTime = 0;
+    lastPaint = 0;
+    accumulator = 0;
+    updateTransport();
+    frameId = requestAnimationFrame(animate);
+  }
+
+  function describeObstruction(obstruction) {
+    const direction = obstruction.direction > 0 ? "右侧" : "左侧";
+    return direction + "质心位移下界 " + obstruction.bound.toFixed(3) + " kg·m，超过轨道内最多 "
+      + obstruction.room.toFixed(3) + " kg·m。无外加扰动时，任何限幅控制律都无法阻止在 "
+      + obstruction.time.toFixed(4) + " s 内越轨。";
+  }
+
+  function preparePlayback(callback) {
+    if (fault || playing || planning) return;
+    if (!controller.ready || controller.ready()) {
+      callback();
+      return;
+    }
+    const capture = makeCaptureRegulator(activeId, makeRegulator);
+    const plan = SwingPlanner.plan(z, ref, SwingSeeds, capture, ticks * PERIOD);
+    planning = plan;
+    displayController("正在计算摆起轨迹。通过轨道和终端捕获检查后开始仿真。", "pending");
+    updateTransport();
+    const chunk = () => {
+      if (planning !== plan) return;
+      try {
+        const frame = plan.next();
+        if (!frame.done) {
+          const item = frame.value;
+          const limit = item.budget ? " / " + item.budget : "";
+          displayController("正在计算摆起轨迹 · " + item.label + " · 迭代 " + item.iteration + limit, "pending");
+          setTimeout(chunk, 0);
+          return;
+        }
+        planning = null;
+        const solution = frame.value;
+        if (solution?.obstruction) {
+          fault = "轨道约束不可满足";
+          displayController(describeObstruction(solution.obstruction), "error");
+        } else if (!solution) {
+          fault = "未找到可行轨迹";
+          displayController("在本次搜索预算内没有找到满足约束的摆起轨迹。可调整初始状态或目标位置后重试。", "error");
+        } else {
+          controller.setPlan(solution);
+          const report = " · 校验最大 |x| = " + solution.travel.toFixed(3) + " m";
+          const captureDetail = "\n直立接管 · " + definitions.get(activeId).name + "\n" + controller.detail;
+          displayController(solution.seconds > 0
+            ? "轨迹已通过名义仿真校验 · 摆起 " + solution.seconds.toFixed(2) + " s" + report
+              + " · 摆起峰值推力 " + solution.peakForce.toFixed(1) + " N"
+            + captureDetail
+            : "当前初态已通过所选控制器的接管检查" + report + captureDetail);
+          updateTransport();
+          callback();
+          return;
+        }
+      } catch (error) {
+        planning = null;
+        fault = "控制器规划异常";
+        displayController("轨迹规划中止 · " + error.message, "error");
+      }
+      updateTransport();
+      draw();
+    };
+    setTimeout(chunk, 0);
+  }
+
+  function changeReference(value) {
+    if (planning) pause();
+    ref = Number(value);
+    refs.value = String(ref);
+    byId("reference-value").textContent = fixed(ref, 2) + " m";
+    if (!playing) {
+      history[history.length - 1] = {...history.at(-1), ref};
+      draw();
+    }
+    if (fault === "未找到可行轨迹") {
+      fault = "";
+      displayController("目标位置已修改。点击运行重新计算。", "pending");
+      updateTransport();
+    }
+  }
+
+  function push(sign) {
+    disturbance = 8 * sign;
+    disturbanceTicks = 12;
+    updateTransport();
+  }
+
+  function applyInitial() {
+    const values = initialInputs.map(input => input.value.trim() ? Number(input.value) : NaN);
+    const error = byId("initial-error");
+    if (values.some(value => !Number.isFinite(value))) {
+      error.textContent = "请填写六个有限数值。";
+      return;
+    }
+    if (Math.abs(values[0]) >= Plant.params.railLimit) {
+      const limit = Plant.params.railLimit;
+      error.textContent = "初始小车位置须在 −" + limit + " m 和 +" + limit + " m 之间。";
+      return;
+    }
+    if (values.slice(1).some(value => Math.abs(value) > 1e4)) {
+      error.textContent = "初始角度或速度的数值过大。";
+      return;
+    }
+    initial = values.map((value, i) => [1, 2, 4, 5].includes(i) ? value / DEG : value);
+    error.textContent = "";
+    reset();
+  }
+
+  function setInitialFields(values) {
+    initialInputs.forEach((input, i) => {
+      input.value = [1, 2, 4, 5].includes(i) ? (values[i] * DEG).toFixed(2) : values[i].toString();
+    });
+  }
+
+  function exportCsv() {
+    const lines = ["t_s,x_m,theta1_rad,theta2_rad,v_m_per_s,omega1_rad_per_s,omega2_rad_per_s,control_N,reference_m,disturbance_N"];
+    for (const point of history) {
+      lines.push([point.t, ...point.z, point.u, point.ref, point.disturbance].map(value => value.toFixed(9)).join(","));
+    }
+    const blob = new Blob([lines.join("\n") + "\n"], {type: "text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "double-inverted-pendulum.csv";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function writeMatrix(root, values, label) {
+    const table = document.createElement("table");
+    table.setAttribute("aria-label", label);
+    const body = document.createElement("tbody");
+    for (const row of values) {
+      const tr = document.createElement("tr");
+      for (const value of row) {
+        const td = document.createElement("td");
+        td.textContent = value === 0 ? "0" : value.toFixed(6);
+        if (value === 0) td.className = "zero";
+        tr.append(td);
+      }
+      body.append(tr);
+    }
+    table.append(body);
+    root.append(table);
+  }
+
+  function writePlantParams() {
+    const p = Plant.params;
+    const list = [
+      ["小车质量 M", p.M.toFixed(2) + " kg"],
+      ["下杆质量 m₁", p.m1.toFixed(2) + " kg"],
+      ["上杆质量 m₂", p.m2.toFixed(2) + " kg"],
+      ["下杆长度 L₁", p.L1.toFixed(2) + " m"],
+      ["上杆长度 L₂", p.L2.toFixed(2) + " m"],
+      ["重力加速度 g", p.g.toFixed(2) + " m/s²"],
+      ["小车黏性阻尼 b", p.b.toFixed(2) + " N·s/m"],
+      ["两转轴阻尼", "0 N·m·s/rad"],
+      ["执行器限幅", "±" + p.forceLimit + " N"],
+      ["轨道位置范围", "±" + p.railLimit + " m"],
+    ];
+    for (const [label, value] of list) {
+      const term = document.createElement("dt");
+      const description = document.createElement("dd");
+      term.textContent = label;
+      description.textContent = value;
+      byId("plant-params").append(term, description);
+    }
+  }
+
+  async function copyMatrices() {
+    const matlab = values => values.map(row => row.map(value => Number(value.toPrecision(13))).join(", ")).join(";\n     ");
+    const content = "A = [" + matlab(Plant.A) + "];\nB = [" + matlab(Plant.B.map(value => [value])) + "];\nC = eye(6);\nD = zeros(6,1);";
+    try {
+      await navigator.clipboard.writeText(content);
+      byId("copy-status").textContent = "已复制 A、B、C、D。";
+    } catch {
+      const box = document.createElement("textarea");
+      box.value = content;
+      box.rows = 9;
+      box.readOnly = true;
+      box.setAttribute("aria-label", "MATLAB 矩阵文本");
+      byId("copy-status").replaceChildren(box);
+      box.focus();
+      box.select();
+      if (document.execCommand("copy")) byId("copy-status").textContent = "已复制 A、B、C、D。";
+    }
+  }
+
+  picker.addEventListener("change", () => { renderFields(); setDirty(); });
+  customInputs.forEach(input => input.addEventListener("input", setDirty));
+  byId("apply-controller").addEventListener("click", applyController);
+  byId("controller-defaults").addEventListener("click", () => {
+    const definition = definitions.get(picker.value);
+    configuration.set(definition.id, Object.fromEntries(definition.fields.map(field => [field.key, field.value])));
+    if (definition.id === "custom") setDefaultCustom();
+    renderFields();
+    setDirty();
+  });
+  byId("play").addEventListener("click", () => playing || planning ? pause() : preparePlayback(startPlayback));
+  byId("reset").addEventListener("click", reset);
+  stepButton.addEventListener("click", () => {
+    preparePlayback(() => { advance(); updateTransport(); draw(); });
+  });
+  byId("push-left").addEventListener("click", () => push(-1));
+  byId("push-right").addEventListener("click", () => push(1));
+  refs.addEventListener("input", () => changeReference(refs.value));
+  document.querySelectorAll("[data-ref]").forEach(button =>
+    button.addEventListener("click", () => changeReference(button.dataset.ref)));
+  dynamics.addEventListener("change", reset);
+  autoSwing.addEventListener("change", reset);
+  byId("apply-initial").addEventListener("click", applyInitial);
+  byId("initial-upright").addEventListener("click", () => {
+    initial = UPRIGHT_INITIAL.slice();
+    setInitialFields(initial);
+    byId("initial-error").textContent = "";
+    reset();
+  });
+  byId("initial-downward").addEventListener("click", () => {
+    initial = DEFAULT_INITIAL.slice();
+    setInitialFields(initial);
+    byId("initial-error").textContent = "";
+    reset();
+  });
+  byId("proof-example").addEventListener("click", () => {
+    initial = DEFAULT_INITIAL.slice();
+    initial[3] = 14;
+    setInitialFields(initial);
+    byId("initial-error").textContent = "";
+    picker.value = "swing";
+    renderFields();
+    applyController();
+    reset();
+    byId("simulation").scrollIntoView?.({behavior: "smooth"});
+    preparePlayback(startPlayback);
+  });
+  byId("chart-window").addEventListener("change", draw);
+  byId("export").addEventListener("click", exportCsv);
+  byId("copy-matrices").addEventListener("click", copyMatrices);
+  window.addEventListener("resize", draw);
+  setDefaultCustom();
+  setInitialFields(initial);
+  dynamics.disabled = true;
+  autoSwing.disabled = true;
+  renderFields();
+  showAppliedController();
+  writeMatrix(byId("matrix-a"), Plant.A, "矩阵 A");
+  writeMatrix(byId("matrix-b"), Plant.B.map(value => [value]), "矩阵 B");
+  writePlantParams();
+  record();
+  updateTransport();
+  draw();
+})();
+
+</script>
+</body>
+</html>

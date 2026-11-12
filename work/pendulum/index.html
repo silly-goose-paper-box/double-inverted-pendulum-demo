@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>二阶倒立摆仿真台</title>
+  <!-- STYLE -->
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#top" aria-label="返回顶部">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
+        <span>PENDULUM LAB</span>
+      </a>
+      <nav aria-label="页面导航"><a href="#simulation">仿真台</a><a href="#signals">状态曲线</a><a href="#equations">模型方程</a></nav>
+    </div>
+  </header>
+  <main id="top" class="wrap">
+    <section class="heading" aria-labelledby="title">
+      <div>
+        <h1 id="title">二阶倒立摆仿真台</h1>
+        <p>小车驱动的双连杆倒立摆 · 非线性动力学 · 单输入六状态</p>
+      </div>
+      <div class="heading-actions">
+        <button id="reset" type="button" class="button"><span aria-hidden="true">↺</span> 重置</button>
+        <button id="play" type="button" class="button primary"><span id="play-icon" aria-hidden="true">▶</span><span id="play-label">运行仿真</span></button>
+      </div>
+    </section>
+    <div class="layout" id="simulation">
+      <div class="main-column">
+        <section class="panel" aria-labelledby="scene-title">
+          <div class="panel-head">
+            <div><h2 id="scene-title">摆杆动态</h2><p>两根摆杆的角度均相对竖直向上</p></div>
+            <span class="run-badge" id="status" data-mode="paused" role="status">待运行</span>
+          </div>
+          <div class="scene-area"><canvas id="scene" aria-label="小车、轨道和两级摆杆的实时位置" role="img"></canvas></div>
+          <div class="readout" aria-label="实时数值">
+            <div><span>时间</span><strong id="time-value">0.00</strong><small>s</small></div>
+            <div><span>小车 x</span><strong id="x-value">0.000</strong><small>m</small></div>
+            <div><span><i class="dot teal"></i> θ₁</span><strong id="t1-value">−180.00</strong><small>°</small></div>
+            <div><span><i class="dot amber"></i> θ₂</span><strong id="t2-value">−180.00</strong><small>°</small></div>
+            <div><span>驱动力 u</span><strong id="u-value">0.00</strong><small>N</small></div>
+          </div>
+          <div class="transport">
+            <button class="button compact" type="button" id="single-step">单步 10 ms</button>
+            <label>速度 <select id="speed"><option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+            <div class="push-controls" aria-label="外力扰动">
+              <span>扰动</span><button class="button compact" id="push-left" type="button" title="施加 −8 N 外力，持续 0.12 秒">← 推左</button><button class="button compact" id="push-right" type="button" title="施加 +8 N 外力，持续 0.12 秒">推右 →</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel signals" id="signals" aria-labelledby="signals-title">
+          <div class="panel-head"><div><h2 id="signals-title">实时状态曲线</h2><p>固定采样周期 10 ms · 时间单位 s</p></div><div class="chart-controls"><label>窗口 <select id="chart-window"><option>6</option><option selected>12</option><option>24</option><option>60</option></select> s</label><button class="button compact" id="export" type="button">导出 CSV</button></div></div>
+          <div class="plots">
+            <article><h3>小车位置 <span>m</span></h3><div class="legend"><span><i class="dot blue"></i> x</span><span><i class="dash"></i> 参考 r</span></div><canvas id="chart-position" role="img" aria-label="小车位置和参考位置实时曲线"></canvas></article>
+            <article><h3>摆杆角度 <span>°</span></h3><div class="legend"><span><i class="dot teal"></i> θ₁</span><span><i class="dot amber"></i> θ₂</span><span title="导出的 CSV 保留连续转角">折回 ±180°</span></div><canvas id="chart-angles" role="img" aria-label="两根摆杆折回至正负一百八十度的实时角度曲线"></canvas></article>
+            <article><h3>小车速度 <span>m/s</span></h3><div class="legend"><span><i class="dot blue"></i> ẋ</span></div><canvas id="chart-velocity" role="img" aria-label="小车速度实时曲线"></canvas></article>
+            <article><h3>摆杆角速度 <span>°/s</span></h3><div class="legend"><span><i class="dot teal"></i> θ̇₁</span><span><i class="dot amber"></i> θ̇₂</span></div><canvas id="chart-angularVelocity" role="img" aria-label="两根摆杆的角速度实时曲线"></canvas></article>
+            <article class="wide-chart"><h3>控制力 <span>N</span></h3><div class="legend"><span><i class="dot pink"></i> u</span><span>执行器限幅 ±36 N</span></div><canvas id="chart-force" role="img" aria-label="小车执行器控制力实时曲线"></canvas></article>
+          </div>
+        </section>
+      </div>
+      <aside class="side-column" aria-label="仿真配置">
+        <section class="panel settings" aria-labelledby="controller-title">
+          <div class="panel-head"><div><h2 id="controller-title">控制器设计</h2><p>全状态可测 · 控制输出为小车推力</p></div></div>
+          <div class="settings-content">
+            <label class="field"><span>控制方式</span><select id="controller"></select></label>
+            <p id="controller-description" class="method-description"></p>
+            <div id="controller-fields" class="field-stack"></div>
+            <div id="custom-fields" hidden>
+              <label class="field"><span>控制力 u（N）</span><textarea id="custom-u" rows="3" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="custom-help"></textarea></label>
+              <p id="custom-help" class="helper">变量 x, th1, th2, v, w1, w2, r, ex = x − r, t, dt。th1、th2 为折回到 ±π 的弧度值。支持四则运算、幂 ^、sin、cos、tanh、clamp(值, 下限, 上限)、if(条件, 真值, 假值)。</p>
+              <details class="custom-states"><summary>动态控制器状态 s1、s2、s3</summary>
+                <p class="helper">每个状态初始为 0，每个采样周期按 s ← s + dt·ds/dt 更新。例如填 ds1/dt = ex，再在 u 中加入 −Ki·s1，把 Ki 替换为数值即可得到位置积分项。</p>
+                <div class="field-stack"><label class="field"><span>ds1/dt</span><input id="custom-ds1" type="text" value="0" spellcheck="false"></label><label class="field"><span>ds2/dt</span><input id="custom-ds2" type="text" value="0" spellcheck="false"></label><label class="field"><span>ds3/dt</span><input id="custom-ds3" type="text" value="0" spellcheck="false"></label></div>
+              </details>
+            </div>
+            <div class="apply-row"><button id="apply-controller" class="button primary" type="button">应用控制器</button><button id="controller-defaults" class="button" type="button">恢复默认值</button></div>
+            <output id="controller-result" class="controller-result" aria-live="polite"></output>
+            <p class="helper">默认从双杆下垂起步。开启自动摆起时，先用 5 ms 步长检查摆起轨迹，再回放所选控制器接管后的 5 s。<a href="#global-proof">查看可达性证明与反例</a></p>
+          </div>
+        </section>
+        <section class="panel settings" aria-labelledby="test-title">
+          <div class="panel-head"><div><h2 id="test-title">实验设置</h2><p>摆起过程中改变参考位置，直立反馈接管后生效</p></div></div>
+          <div class="settings-content">
+            <label class="field"><span>参考位置 r <b id="reference-value">0.00 m</b></span><input id="reference" type="range" min="-1.2" max="1.2" step="0.01" value="0"></label>
+            <div class="presets" aria-label="参考位置快捷设置"><button type="button" class="button compact" data-ref="-0.25">−0.25 m</button><button type="button" class="button compact" data-ref="0">归零</button><button type="button" class="button compact" data-ref="0.25">+0.25 m</button></div>
+            <label class="helper"><input id="auto-swing" type="checkbox" checked> 自动摆起并接管（非线性仿真）</label>
+            <label class="field"><span>仿真动力学</span><select id="dynamics-type"><option value="nonlinear">非线性方程</option><option value="linear">直立点线性化</option></select></label>
+            <details class="initial-details"><summary>初始状态</summary>
+              <div id="initial-fields" class="initial-fields">
+                <label class="field"><span>x₀ (m)</span><input type="number" step="0.01" value="0" data-initial="0"></label>
+                <label class="field"><span>θ₁₀ (°)</span><input type="number" step="0.1" value="-180" data-initial="1"></label>
+                <label class="field"><span>θ₂₀ (°)</span><input type="number" step="0.1" value="-180" data-initial="2"></label>
+                <label class="field"><span>ẋ₀ (m/s)</span><input type="number" step="0.01" value="0" data-initial="3"></label>
+                <label class="field"><span>θ̇₁₀ (°/s)</span><input type="number" step="0.1" value="0" data-initial="4"></label>
+                <label class="field"><span>θ̇₂₀ (°/s)</span><input type="number" step="0.1" value="0" data-initial="5"></label>
+              </div>
+              <div class="apply-row"><button id="apply-initial" class="button compact" type="button">应用并重置</button><button id="initial-downward" class="button compact" type="button">双杆下垂</button><button id="initial-upright" class="button compact" type="button">直立小偏角</button></div>
+              <output id="initial-error" class="helper error" aria-live="polite"></output>
+            </details>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <section id="equations" class="panel model" aria-labelledby="model-title">
+      <div class="panel-head"><div><h2 id="model-title">状态空间与动力学</h2><p>直立平衡点 θ₁ = θ₂ = 0，静止时 u = 0</p></div><button id="copy-matrices" class="button compact" type="button">复制 MATLAB 矩阵</button></div>
+      <div class="model-body">
+        <div class="math-summary"><code>z = [x, θ₁, θ₂, ẋ, θ̇₁, θ̇₂]ᵀ</code><code>ż = Az + Bu， y = Cz + Du</code><code>C = I₆，D = 0₆×₁</code></div>
+        <p class="helper">x 向右为正，两杆均从竖直向上独立量角，向右倾为正。矩阵和控制器使用 m、rad、s、N。位置指令 r 对应平衡状态 z<sub>r</sub> = [r, 0, 0, 0, 0, 0]ᵀ。</p>
+        <div class="matrices"><div class="matrix-block"><h3>A <span>6 × 6</span></h3><div id="matrix-a"></div></div><div class="matrix-block"><h3>B <span>6 × 1</span></h3><div id="matrix-b"></div></div></div>
+        <p class="helper">令 H₀ = H(0)，G = diag(0, αg, βg)，F = diag(b, 0, 0)。A 的上下分块分别是 [0₃, I₃]、[H₀⁻¹G, −H₀⁻¹F]，B = [0₃×₁; H₀⁻¹(1, 0, 0)ᵀ]。</p>
+        <output id="copy-status" class="helper" aria-live="polite"></output>
+        <div class="model-lower">
+          <div><h3>固定物理参数</h3><dl id="plant-params" class="params"></dl></div>
+          <div class="nonlinear"><h3>非线性方程</h3>
+            <div class="equation">q = [x, θ₁, θ₂]ᵀ， ż = [q̇; H(q)⁻¹([u, 0, 0]ᵀ − h(q, q̇))]</div>
+            <div class="equation">
+              <span>α = m₁c₁ + m₂L₁， β = m₂c₂， γ = m₂L₁c₂</span>
+              <span>H₁₁ = M + m₁ + m₂</span>
+              <span>H₁₂ = α cos θ₁， H₁₃ = β cos θ₂</span>
+              <span>H₂₂ = J₁ + m₁c₁² + m₂L₁²， H₃₃ = J₂ + m₂c₂²</span>
+              <span>H₂₃ = γ cos(θ₁ − θ₂)， Hᵢⱼ = Hⱼᵢ</span>
+              <span>h₁ = bẋ − α sin θ₁ · θ̇₁² − β sin θ₂ · θ̇₂²</span>
+              <span>h₂ = γ sin(θ₁ − θ₂) · θ̇₂² − αg sin θ₁</span>
+              <span>h₃ = −γ sin(θ₁ − θ₂) · θ̇₁² − βg sin θ₂</span>
+            </div>
+            <p class="helper">均匀杆 cᵢ = Lᵢ/2，Jᵢ = mᵢLᵢ²/12。控制力以零阶保持施加，动力学用 5 ms 的四阶 Runge–Kutta 积分。扰动作为额外小车外力叠加。</p>
+          </div>
+        </div>
+        <details class="reference-details"><summary>参考项目</summary><p class="helper">参考了小车双倒立摆的建模与控制器分类，页面数值取自上表固定参数并独立计算。</p><ul><li><a href="https://github.com/seedatnabeel/Inverted-Pendulum-Control" target="_blank" rel="noopener">Inverted-Pendulum-Control · 极点配置、LQR 与观测器</a></li><li><a href="https://github.com/PhillippGery/DIPC_Control_Design" target="_blank" rel="noopener">DIPC Control Design · 非线性建模与 MPC</a></li></ul></details>
+      </div>
+    </section>
+    <!-- GLOBAL PROOF -->
+    <footer>小车轨道范围 ±2.8 m <span>·</span> 到达边界时停止仿真 <span>·</span> 开启自动摆起后，所选控制器在直立附近接管</footer>
+  </main>
+  <!-- SCRIPTS -->
+</body>
+</html>
